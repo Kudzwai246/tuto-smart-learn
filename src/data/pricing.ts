@@ -1,46 +1,84 @@
 
-import { PricingPlan } from '../types';
+import { EducationLevel } from '@/types';
 
-export const pricingPlans: PricingPlan[] = [
-  {
-    level: 'primary',
-    individual: {
-      monthly: 50,
-      yearly: 420
-    },
-    group: {
-      monthly: 15,
-      yearly: 120
-    }
+export interface PricingPlan {
+  individual: {
+    monthly: number;
+    yearly: number;
+  };
+  group: {
+    monthly: number;
+    yearly: number;
+  };
+}
+
+export const PRICING_PLANS: Record<EducationLevel, PricingPlan> = {
+  primary_grade_1: {
+    individual: { monthly: 20, yearly: 200 },
+    group: { monthly: 4, yearly: 40 }
   },
-  {
-    level: 'olevel',
-    individual: {
-      monthly: 40,
-      yearly: 360
-    },
-    group: {
-      monthly: 7,
-      yearly: 84
-    }
+  primary_grade_2: {
+    individual: { monthly: 20, yearly: 200 },
+    group: { monthly: 4, yearly: 40 }
   },
-  {
-    level: 'alevel',
-    individual: {
-      monthly: 50,
-      yearly: 420
-    },
-    group: {
-      monthly: 13,
-      yearly: 120
-    }
+  primary_grade_3: {
+    individual: { monthly: 22, yearly: 220 },
+    group: { monthly: 4.5, yearly: 45 }
+  },
+  primary_grade_4: {
+    individual: { monthly: 22, yearly: 220 },
+    group: { monthly: 4.5, yearly: 45 }
+  },
+  primary_grade_5: {
+    individual: { monthly: 25, yearly: 250 },
+    group: { monthly: 5, yearly: 50 }
+  },
+  primary_grade_6: {
+    individual: { monthly: 25, yearly: 250 },
+    group: { monthly: 5, yearly: 50 }
+  },
+  primary_grade_7: {
+    individual: { monthly: 28, yearly: 280 },
+    group: { monthly: 5.5, yearly: 55 }
+  },
+  olevel_form_1: {
+    individual: { monthly: 35, yearly: 350 },
+    group: { monthly: 6, yearly: 60 }
+  },
+  olevel_form_2: {
+    individual: { monthly: 35, yearly: 350 },
+    group: { monthly: 6, yearly: 60 }
+  },
+  olevel_form_3: {
+    individual: { monthly: 40, yearly: 400 },
+    group: { monthly: 7, yearly: 70 }
+  },
+  olevel_form_4: {
+    individual: { monthly: 45, yearly: 450 },
+    group: { monthly: 8, yearly: 80 }
+  },
+  alevel_form_5_arts: {
+    individual: { monthly: 50, yearly: 500 },
+    group: { monthly: 10, yearly: 100 }
+  },
+  alevel_form_5_sciences: {
+    individual: { monthly: 55, yearly: 550 },
+    group: { monthly: 11, yearly: 110 }
+  },
+  alevel_form_5_commercials: {
+    individual: { monthly: 50, yearly: 500 },
+    group: { monthly: 10, yearly: 100 }
+  },
+  alevel_form_6_arts: {
+    individual: { monthly: 55, yearly: 550 },
+    group: { monthly: 11, yearly: 110 }
+  },
+  alevel_form_6_sciences: {
+    individual: { monthly: 60, yearly: 600 },
+    group: { monthly: 12, yearly: 120 }
+  },
+  alevel_form_6_commercials: {
+    individual: { monthly: 55, yearly: 550 },
+    group: { monthly: 11, yearly: 110 }
   }
-];
-
-export const API_CONFIG = {
-  mapsApiKey: 'AIzaSyAwfeiSn22K53uoipJW5hC7CNKf4DTPopg',
-  spreadsheetId: '1pjFPATRRZaiDhHLMKNfWAK0DMWAOUekA-ho5nV1ftNY',
-  driveUploadsFolderId: '10mlqTYyMs2uJlXw2naQyV6mbDqD-xEwb',
-  webAppUrl: 'https://script.google.com/macros/s/AKfycbzlDjz0KklmLlMwI77J_67nMRJOcU2235iQtYK3tbndZ7Vk7-P3I9zhl1ltDAJCqyMvXw/exec',
-  scriptId: '12Jt6G9nxg7PRo7-JIACqP39y6TuYtSWKpbDyr5n48_auHUIGlSTcLtMt'
 };
