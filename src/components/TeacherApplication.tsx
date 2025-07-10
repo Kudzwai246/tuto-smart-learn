@@ -3,13 +3,14 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowLeft, Upload, MapPin, BookOpen } from 'lucide-react';
+import { ArrowLeft, MapPin, Plus, X } from 'lucide-react';
 import TutoLogo from './TutoLogo';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TeacherApplicationProps {
   onBack: () => void;
@@ -18,46 +19,69 @@ interface TeacherApplicationProps {
 
 const TeacherApplication: React.FC<TeacherApplicationProps> = ({ onBack, onApplicationSubmitted }) => {
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    qualifications: '',
-    experience: '',
-    subjects: [] as string[],
-    teachingLocation: '',
+    qualifications: [''],
+    subjects: [''],
     curriculum: '',
-    documents: null as File | null
+    experienceYears: '',
+    locationAddress: '',
+    locationCity: '',
+    lessonLocation: '',
+    additionalInfo: ''
   });
 
   const [isLoading, setIsLoading] = useState(false);
 
-  const subjects = [
-    'Mathematics', 'English', 'Science', 'Physics', 'Chemistry', 'Biology',
-    'History', 'Geography', 'Literature', 'Economics', 'Accounting', 
-    'Computer Science', 'Art', 'Music', 'Physical Education'
-  ];
-
-  const handleSubjectChange = (subject: string, checked: boolean) => {
+  const addQualification = () => {
     setFormData(prev => ({
       ...prev,
-      subjects: checked 
-        ? [...prev.subjects, subject]
-        : prev.subjects.filter(s => s !== subject)
+      qualifications: [...prev.qualifications, '']
     }));
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setFormData(prev => ({...prev, documents: file}));
-      toast.success('Document uploaded successfully');
-    }
+  const removeQualification = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      qualifications: prev.qualifications.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateQualification = (index: number, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      qualifications: prev.qualifications.map((qual, i) => i === index ? value : qual)
+    }));
+  };
+
+  const addSubject = () => {
+    setFormData(prev => ({
+      ...prev,
+      subjects: [...prev.subjects, '']
+    }));
+  };
+
+  const removeSubject = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      subjects: prev.subjects.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateSubject = (index: number, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      subjects: prev.subjects.map((subj, i) => i === index ? value : subj)
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.email || !formData.phone || !formData.qualifications || !formData.subjects.length) {
+    const validQualifications = formData.qualifications.filter(q => q.trim() !== '');
+    const validSubjects = formData.subjects.filter(s => s.trim() !== '');
+    
+    if (validQualifications.length === 0 || validSubjects.length === 0 || 
+        !formData.curriculum || !formData.experienceYears || !formData.locationAddress || 
+        !formData.locationCity || !formData.lessonLocation) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -65,15 +89,33 @@ const TeacherApplication: React.FC<TeacherApplicationProps> = ({ onBack, onAppli
     setIsLoading(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const { data: { user } } = await supabase.auth.getUser();
       
-      console.log('Teacher application data:', formData);
-      toast.success('Application submitted successfully! We will review and contact you soon.');
+      if (!user) {
+        toast.error('You must be logged in to submit application');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('teachers')
+        .insert({
+          id: user.id,
+          qualifications: validQualifications,
+          subjects: validSubjects,
+          curriculum: formData.curriculum,
+          experience_years: parseInt(formData.experienceYears),
+          location_address: formData.locationAddress,
+          location_city: formData.locationCity,
+          lesson_location: formData.lessonLocation,
+        });
+
+      if (error) throw error;
+      
+      toast.success('Teacher application submitted successfully!');
       onApplicationSubmitted();
     } catch (error) {
       console.error('Application error:', error);
-      toast.error('Application failed. Please try again.');
+      toast.error('Application submission failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -97,121 +139,128 @@ const TeacherApplication: React.FC<TeacherApplicationProps> = ({ onBack, onAppli
               Teacher Application
             </CardTitle>
             <p className="text-gray-600">
-              Join our network of qualified educators
+              Share your qualifications and experience
             </p>
           </CardHeader>
           
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Personal Information */}
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="name">Full Name *</Label>
-                  <Input
-                    id="name"
-                    type="text"
-                    placeholder="Enter your full name"
-                    value={formData.name}
-                    onChange={(e) => setFormData(prev => ({...prev, name: e.target.value}))}
-                    className="mt-1"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="email">Email Address *</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="Enter your email"
-                    value={formData.email}
-                    onChange={(e) => setFormData(prev => ({...prev, email: e.target.value}))}
-                    className="mt-1"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="phone">Phone Number *</Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="Enter your phone number"
-                    value={formData.phone}
-                    onChange={(e) => setFormData(prev => ({...prev, phone: e.target.value}))}
-                    className="mt-1"
-                  />
+              {/* Qualifications */}
+              <div>
+                <Label>Educational Qualifications</Label>
+                <div className="space-y-2 mt-2">
+                  {formData.qualifications.map((qualification, index) => (
+                    <div key={index} className="flex space-x-2">
+                      <Input
+                        placeholder="e.g., Bachelor's Degree in Mathematics"
+                        value={qualification}
+                        onChange={(e) => updateQualification(index, e.target.value)}
+                        className="flex-1"
+                      />
+                      {formData.qualifications.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeQualification(index)}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addQualification}
+                    className="w-full"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Qualification
+                  </Button>
                 </div>
               </div>
 
-              {/* Professional Information */}
+              {/* Subjects */}
+              <div>
+                <Label>Subjects You Can Teach</Label>
+                <div className="space-y-2 mt-2">
+                  {formData.subjects.map((subject, index) => (
+                    <div key={index} className="flex space-x-2">
+                      <Input
+                        placeholder="e.g., Mathematics, English, Science"
+                        value={subject}
+                        onChange={(e) => updateSubject(index, e.target.value)}
+                        className="flex-1"
+                      />
+                      {formData.subjects.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeSubject(index)}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addSubject}
+                    className="w-full"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Subject
+                  </Button>
+                </div>
+              </div>
+
+              {/* Curriculum */}
+              <div>
+                <Label>Curriculum Experience</Label>
+                <Select onValueChange={(value) => setFormData(prev => ({...prev, curriculum: value}))}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select curriculum type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="zimsec">ZIMSEC (Zimbabwe)</SelectItem>
+                    <SelectItem value="cambridge">Cambridge International</SelectItem>
+                    <SelectItem value="both">Both ZIMSEC & Cambridge</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Experience */}
+              <div>
+                <Label htmlFor="experienceYears">Years of Teaching Experience</Label>
+                <Input
+                  id="experienceYears"
+                  type="number"
+                  min="0"
+                  max="50"
+                  placeholder="Enter number of years"
+                  value={formData.experienceYears}
+                  onChange={(e) => setFormData(prev => ({...prev, experienceYears: e.target.value}))}
+                  className="mt-1"
+                />
+              </div>
+
+              {/* Location */}
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="qualifications">Qualifications *</Label>
-                  <Textarea
-                    id="qualifications"
-                    placeholder="List your educational qualifications and certifications"
-                    value={formData.qualifications}
-                    onChange={(e) => setFormData(prev => ({...prev, qualifications: e.target.value}))}
-                    className="mt-1"
-                    rows={3}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="experience">Teaching Experience</Label>
-                  <Select onValueChange={(value) => setFormData(prev => ({...prev, experience: value}))}>
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Years of teaching experience" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="0-1">0-1 years</SelectItem>
-                      <SelectItem value="2-5">2-5 years</SelectItem>
-                      <SelectItem value="6-10">6-10 years</SelectItem>
-                      <SelectItem value="10+">10+ years</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label>Subjects You Can Teach *</Label>
-                  <div className="grid grid-cols-2 gap-2 mt-2 max-h-40 overflow-y-auto">
-                    {subjects.map((subject) => (
-                      <div key={subject} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={subject}
-                          checked={formData.subjects.includes(subject)}
-                          onCheckedChange={(checked) => handleSubjectChange(subject, checked as boolean)}
-                        />
-                        <Label htmlFor={subject} className="text-sm">
-                          {subject}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="curriculum">Curriculum</Label>
-                  <Select onValueChange={(value) => setFormData(prev => ({...prev, curriculum: value}))}>
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Select curriculum" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="zimsec">ZIMSEC</SelectItem>
-                      <SelectItem value="cambridge">Cambridge</SelectItem>
-                      <SelectItem value="both">Both ZIMSEC & Cambridge</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="location">Teaching Location *</Label>
+                  <Label htmlFor="locationAddress">Your Address</Label>
                   <div className="relative mt-1">
                     <Input
-                      id="location"
+                      id="locationAddress"
                       type="text"
-                      placeholder="Enter your preferred teaching location"
-                      value={formData.teachingLocation}
-                      onChange={(e) => setFormData(prev => ({...prev, teachingLocation: e.target.value}))}
+                      placeholder="Enter your full address"
+                      value={formData.locationAddress}
+                      onChange={(e) => setFormData(prev => ({...prev, locationAddress: e.target.value}))}
                       className="pl-10"
                     />
                     <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -219,25 +268,54 @@ const TeacherApplication: React.FC<TeacherApplicationProps> = ({ onBack, onAppli
                 </div>
 
                 <div>
-                  <Label htmlFor="documents">Upload Qualifications Document</Label>
-                  <div className="mt-1">
-                    <label className="flex items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary transition-colors">
-                      <div className="text-center">
-                        <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                        <p className="text-sm text-gray-500">
-                          {formData.documents ? formData.documents.name : 'Click to upload documents'}
-                        </p>
-                        <p className="text-xs text-gray-400">PDF, JPG, PNG (Max 5MB)</p>
-                      </div>
-                      <input
-                        type="file"
-                        className="hidden"
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        onChange={handleFileUpload}
-                      />
-                    </label>
-                  </div>
+                  <Label htmlFor="locationCity">City/Area</Label>
+                  <Input
+                    id="locationCity"
+                    type="text"
+                    placeholder="e.g., Harare, Bulawayo, Gweru"
+                    value={formData.locationCity}
+                    onChange={(e) => setFormData(prev => ({...prev, locationCity: e.target.value}))}
+                    className="mt-1"
+                  />
                 </div>
+
+                <div>
+                  <Label>Preferred Teaching Location</Label>
+                  <Select onValueChange={(value) => setFormData(prev => ({...prev, lessonLocation: value}))}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Where do you prefer to teach?" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="student_home">At Student's Home</SelectItem>
+                      <SelectItem value="my_home">At My Home</SelectItem>
+                      <SelectItem value="online">Online</SelectItem>
+                      <SelectItem value="flexible">Flexible/Any Location</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Additional Information */}
+              <div>
+                <Label htmlFor="additionalInfo">Additional Information (Optional)</Label>
+                <Textarea
+                  id="additionalInfo"
+                  placeholder="Tell us more about your teaching philosophy, achievements, or anything else you'd like us to know..."
+                  value={formData.additionalInfo}
+                  onChange={(e) => setFormData(prev => ({...prev, additionalInfo: e.target.value}))}
+                  className="mt-1"
+                  rows={4}
+                />
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="font-semibold text-blue-800 mb-2">What happens next?</h3>
+                <ul className="text-sm text-blue-700 space-y-1">
+                  <li>• Your application will be reviewed within 3-5 business days</li>
+                  <li>• We'll verify your qualifications and experience</li>
+                  <li>• Once approved, you'll start earning 90% of subscription fees</li>
+                  <li>• You'll receive notifications for new student requests</li>
+                </ul>
               </div>
 
               <Button 
@@ -252,7 +330,7 @@ const TeacherApplication: React.FC<TeacherApplicationProps> = ({ onBack, onAppli
         </Card>
 
         <p className="text-center text-xs text-gray-500">
-          Applications are reviewed within 3-5 business days
+          All information will be verified. False information may result in rejection.
         </p>
       </div>
     </div>

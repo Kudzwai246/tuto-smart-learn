@@ -9,6 +9,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ArrowLeft, MapPin } from 'lucide-react';
 import TutoLogo from './TutoLogo';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { EDUCATION_LEVELS, EducationLevel } from '@/types';
 
 interface StudentRegistrationProps {
   onBack: () => void;
@@ -17,12 +19,13 @@ interface StudentRegistrationProps {
 
 const StudentRegistration: React.FC<StudentRegistrationProps> = ({ onBack, onRegistrationComplete }) => {
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
     educationLevel: '',
     lessonType: '',
-    location: ''
+    locationAddress: '',
+    locationCity: '',
+    guardianName: '',
+    guardianEmail: '',
+    guardianPhone: ''
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -30,7 +33,8 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({ onBack, onReg
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.email || !formData.phone || !formData.educationLevel || !formData.lessonType || !formData.location) {
+    if (!formData.educationLevel || !formData.lessonType || !formData.locationAddress || 
+        !formData.locationCity || !formData.guardianName || !formData.guardianEmail || !formData.guardianPhone) {
       toast.error('Please fill in all fields');
       return;
     }
@@ -38,11 +42,29 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({ onBack, onReg
     setIsLoading(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const { data: { user } } = await supabase.auth.getUser();
       
-      console.log('Student registration data:', formData);
-      toast.success('Registration successful! Welcome to Tuto!');
+      if (!user) {
+        toast.error('You must be logged in to complete registration');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('students')
+        .insert({
+          id: user.id,
+          education_level: formData.educationLevel as EducationLevel,
+          preferred_lesson_type: formData.lessonType as 'individual' | 'group',
+          location_address: formData.locationAddress,
+          location_city: formData.locationCity,
+          guardian_name: formData.guardianName,
+          guardian_email: formData.guardianEmail,
+          guardian_phone: formData.guardianPhone,
+        });
+
+      if (error) throw error;
+      
+      toast.success('Student registration completed successfully!');
       onRegistrationComplete();
     } catch (error) {
       console.error('Registration error:', error);
@@ -67,65 +89,28 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({ onBack, onReg
         <Card className="shadow-lg border-none">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl font-bold text-gray-900">
-              Student Registration
+              Complete Your Profile
             </CardTitle>
             <p className="text-gray-600">
-              Join thousands of students learning with Tuto
+              Tell us more about your learning needs
             </p>
           </CardHeader>
           
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Personal Information */}
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input
-                    id="name"
-                    type="text"
-                    placeholder="Enter your full name"
-                    value={formData.name}
-                    onChange={(e) => setFormData(prev => ({...prev, name: e.target.value}))}
-                    className="mt-1"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="Enter your email"
-                    value={formData.email}
-                    onChange={(e) => setFormData(prev => ({...prev, email: e.target.value}))}
-                    className="mt-1"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="Enter your phone number"
-                    value={formData.phone}
-                    onChange={(e) => setFormData(prev => ({...prev, phone: e.target.value}))}
-                    className="mt-1"
-                  />
-                </div>
-              </div>
-
               {/* Education Level */}
               <div>
-                <Label>Education Level</Label>
+                <Label>Education Level & Grade</Label>
                 <Select onValueChange={(value) => setFormData(prev => ({...prev, educationLevel: value}))}>
                   <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select your education level" />
+                    <SelectValue placeholder="Select your current grade level" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="primary">Primary School</SelectItem>
-                    <SelectItem value="olevel">O-Level (Form 1-4)</SelectItem>
-                    <SelectItem value="alevel">A-Level (Form 5-6)</SelectItem>
+                    {EDUCATION_LEVELS.map((level) => (
+                      <SelectItem key={level.value} value={level.value}>
+                        {level.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -140,35 +125,90 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({ onBack, onReg
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="individual" id="individual" />
                     <Label htmlFor="individual" className="text-sm">
-                      Individual Lessons (1-on-1)
+                      Individual Lessons (1-on-1) - Higher cost, personalized attention
                     </Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="group" id="group" />
                     <Label htmlFor="group" className="text-sm">
-                      Group Lessons (Max 5 students)
+                      Group Lessons (Max 5 students) - Lower cost, collaborative learning
                     </Label>
                   </div>
                 </RadioGroup>
               </div>
 
               {/* Location */}
-              <div>
-                <Label htmlFor="location">Location</Label>
-                <div className="relative mt-1">
-                  <Input
-                    id="location"
-                    type="text"
-                    placeholder="Enter your city/area"
-                    value={formData.location}
-                    onChange={(e) => setFormData(prev => ({...prev, location: e.target.value}))}
-                    className="pl-10"
-                  />
-                  <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="locationAddress">Home Address</Label>
+                  <div className="relative mt-1">
+                    <Input
+                      id="locationAddress"
+                      type="text"
+                      placeholder="Enter your full address"
+                      value={formData.locationAddress}
+                      onChange={(e) => setFormData(prev => ({...prev, locationAddress: e.target.value}))}
+                      className="pl-10"
+                    />
+                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  We'll help you find teachers near your location
+
+                <div>
+                  <Label htmlFor="locationCity">City/Area</Label>
+                  <Input
+                    id="locationCity"
+                    type="text"
+                    placeholder="e.g., Harare, Bulawayo, Gweru"
+                    value={formData.locationCity}
+                    onChange={(e) => setFormData(prev => ({...prev, locationCity: e.target.value}))}
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+
+              {/* Guardian Information */}
+              <div className="space-y-4 border-t pt-4">
+                <h3 className="font-semibold text-gray-900">Guardian Information</h3>
+                <p className="text-sm text-gray-600">
+                  Progress reports will be sent to your guardian every two weeks
                 </p>
+                
+                <div>
+                  <Label htmlFor="guardianName">Guardian Full Name</Label>
+                  <Input
+                    id="guardianName"
+                    type="text"
+                    placeholder="Parent/Guardian full name"
+                    value={formData.guardianName}
+                    onChange={(e) => setFormData(prev => ({...prev, guardianName: e.target.value}))}
+                    className="mt-1"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="guardianEmail">Guardian Email</Label>
+                  <Input
+                    id="guardianEmail"
+                    type="email"
+                    placeholder="Guardian email for progress reports"
+                    value={formData.guardianEmail}
+                    onChange={(e) => setFormData(prev => ({...prev, guardianEmail: e.target.value}))}
+                    className="mt-1"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="guardianPhone">Guardian Phone</Label>
+                  <Input
+                    id="guardianPhone"
+                    type="tel"
+                    placeholder="Guardian phone number"
+                    value={formData.guardianPhone}
+                    onChange={(e) => setFormData(prev => ({...prev, guardianPhone: e.target.value}))}
+                    className="mt-1"
+                  />
+                </div>
               </div>
 
               <Button 
@@ -176,14 +216,14 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({ onBack, onReg
                 className="w-full bg-primary hover:bg-orange-600 text-white py-6 text-lg font-semibold"
                 disabled={isLoading}
               >
-                {isLoading ? 'Creating Account...' : 'Create Account'}
+                {isLoading ? 'Completing Registration...' : 'Complete Registration'}
               </Button>
             </form>
           </CardContent>
         </Card>
 
         <p className="text-center text-xs text-gray-500">
-          By registering, you agree to our Terms of Service and Privacy Policy
+          All information is secure and will only be used for educational purposes
         </p>
       </div>
     </div>

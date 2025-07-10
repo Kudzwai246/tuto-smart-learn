@@ -2,7 +2,7 @@
 import { CapacitorConfig } from '@capacitor/core';
 
 const config: CapacitorConfig = {
-  appId: 'app.lovable.8bc352a7cc3b44b79318b107c46135ad',
+  appId: 'com.tuto.smartlearn',
   appName: 'Tuto Smart Learn',
   webDir: 'dist',
   server: {
@@ -11,10 +11,21 @@ const config: CapacitorConfig = {
   },
   plugins: {
     SplashScreen: {
-      launchShowDuration: 2000,
+      launchShowDuration: 3000,
       backgroundColor: '#ff6b35',
-      showSpinner: false
+      showSpinner: false,
+      androidSpinnerStyle: 'large',
+      spinnerColor: '#ffffff'
+    },
+    StatusBar: {
+      backgroundColor: '#ff6b35',
+      style: 'light'
     }
+  },
+  android: {
+    allowMixedContent: true,
+    captureInput: true,
+    webContentsDebuggingEnabled: false
   }
 };
 
