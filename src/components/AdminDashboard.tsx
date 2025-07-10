@@ -33,23 +33,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSignOut }) => {
 
   const fetchDashboardData = async () => {
     try {
-      // Fetch students
+      // Fetch students with their profiles
       const { data: studentsData } = await supabase
         .from('students')
         .select(`
           *,
-          profiles!inner(full_name, email, phone, created_at)
+          profiles!inner(*)
         `);
 
-      // Fetch teachers
+      // Fetch teachers with their profiles  
       const { data: teachersData } = await supabase
         .from('teachers')
         .select(`
           *,
-          profiles!inner(full_name, email, phone, created_at)
+          profiles!inner(*)
         `);
 
-      // Fetch subscriptions
+      // Fetch subscriptions with related data
       const { data: subscriptionsData } = await supabase
         .from('subscriptions')
         .select(`
