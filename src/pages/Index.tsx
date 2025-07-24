@@ -139,7 +139,7 @@ const Index = () => {
       return (
         <UserTypeSelection 
           onBack={() => setAppState('welcome')}
-          onSelectUserType={() => setAppState('auth')}
+          onSelectType={() => setAppState('auth')}
         />
       );
     
@@ -169,7 +169,7 @@ const Index = () => {
     case 'teacher-pending':
       return (
         <TeacherPendingApproval 
-          onSignOut={handleSignOut}
+          onBackToHome={handleSignOut}
         />
       );
     
