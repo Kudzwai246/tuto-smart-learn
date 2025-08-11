@@ -26,10 +26,28 @@ const TeacherApplication: React.FC<TeacherApplicationProps> = ({ onBack, onAppli
     locationAddress: '',
     locationCity: '',
     lessonLocation: '',
+    businessLat: null as number | null,
+    businessLng: null as number | null,
     additionalInfo: ''
   });
 
   const [isLoading, setIsLoading] = useState(false);
+
+  const useMyBusinessLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        setFormData(prev => ({ ...prev, businessLat: latitude, businessLng: longitude }));
+        toast.success('Business location captured!');
+      },
+      () => toast.error('Failed to get location. Please allow location access.'),
+      { enableHighAccuracy: true }
+    );
+  };
 
   const addQualification = () => {
     setFormData(prev => ({
@@ -107,6 +125,8 @@ const TeacherApplication: React.FC<TeacherApplicationProps> = ({ onBack, onAppli
           location_address: formData.locationAddress,
           location_city: formData.locationCity,
           lesson_location: formData.lessonLocation,
+          business_lat: formData.businessLat,
+          business_lng: formData.businessLng,
         });
 
       if (error) throw error;
@@ -292,6 +312,17 @@ const TeacherApplication: React.FC<TeacherApplicationProps> = ({ onBack, onAppli
                       <SelectItem value="flexible">Flexible/Any Location</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-gray-600">
+                    {formData.businessLat && formData.businessLng
+                      ? `Business location set: ${formData.businessLat.toFixed(5)}, ${formData.businessLng.toFixed(5)}`
+                      : 'No live business location set yet'}
+                  </div>
+                  <Button type="button" variant="secondary" onClick={useMyBusinessLocation}>
+                    Use My Current Location
+                  </Button>
                 </div>
               </div>
 

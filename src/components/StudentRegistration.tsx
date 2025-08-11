@@ -21,14 +21,42 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({ onBack, onReg
   const [formData, setFormData] = useState({
     educationLevel: '',
     lessonType: '',
+    subjects: [''],
     locationAddress: '',
     locationCity: '',
+    residenceLat: null as number | null,
+    residenceLng: null as number | null,
     guardianName: '',
     guardianEmail: '',
     guardianPhone: ''
   });
 
   const [isLoading, setIsLoading] = useState(false);
+
+  const addSubject = () => {
+    setFormData(prev => ({ ...prev, subjects: [...prev.subjects, ''] }));
+  };
+  const removeSubject = (index: number) => {
+    setFormData(prev => ({ ...prev, subjects: prev.subjects.filter((_, i) => i !== index) }));
+  };
+  const updateSubject = (index: number, value: string) => {
+    setFormData(prev => ({ ...prev, subjects: prev.subjects.map((s, i) => (i === index ? value : s)) }));
+  };
+  const useMyLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        setFormData(prev => ({ ...prev, residenceLat: latitude, residenceLng: longitude }));
+        toast.success('Location captured!');
+      },
+      () => toast.error('Failed to get location. Please allow location access.'),
+      { enableHighAccuracy: true }
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,6 +66,8 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({ onBack, onReg
       toast.error('Please fill in all fields');
       return;
     }
+
+    const validSubjects = formData.subjects.map(s => s.trim()).filter(Boolean);
 
     setIsLoading(true);
     
@@ -60,6 +90,9 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({ onBack, onReg
           guardian_name: formData.guardianName,
           guardian_email: formData.guardianEmail,
           guardian_phone: formData.guardianPhone,
+          subject_selections: validSubjects,
+          residence_lat: formData.residenceLat,
+          residence_lng: formData.residenceLng,
         });
 
       if (error) throw error;
@@ -137,6 +170,42 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({ onBack, onReg
                 </RadioGroup>
               </div>
 
+              {/* Subjects Interested In */}
+              <div>
+                <Label>Subjects You're Interested In</Label>
+                <div className="space-y-2 mt-2">
+                  {formData.subjects.map((subject, index) => (
+                    <div key={index} className="flex space-x-2">
+                      <Input
+                        placeholder="e.g., Mathematics, English, Science"
+                        value={subject}
+                        onChange={(e) => updateSubject(index, e.target.value)}
+                        className="flex-1"
+                      />
+                      {formData.subjects.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeSubject(index)}
+                        >
+                          Remove
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addSubject}
+                    className="w-full"
+                  >
+                    Add Subject
+                  </Button>
+                </div>
+              </div>
+
               {/* Location */}
               <div className="space-y-4">
                 <div>
@@ -164,6 +233,17 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({ onBack, onReg
                     onChange={(e) => setFormData(prev => ({...prev, locationCity: e.target.value}))}
                     className="mt-1"
                   />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-gray-600">
+                    {formData.residenceLat && formData.residenceLng
+                      ? `Location set: ${formData.residenceLat.toFixed(5)}, ${formData.residenceLng.toFixed(5)}`
+                      : 'No live location set yet'}
+                  </div>
+                  <Button type="button" variant="secondary" onClick={useMyLocation}>
+                    Use My Current Location
+                  </Button>
                 </div>
               </div>
 

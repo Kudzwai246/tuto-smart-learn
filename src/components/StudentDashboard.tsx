@@ -21,6 +21,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ onSignOut }) => {
   const [teachers, setTeachers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewSubscription, setShowNewSubscription] = useState(false);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
 
   useEffect(() => {
     fetchStudentData();
@@ -61,7 +62,35 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ onSignOut }) => {
 
       setProfile(studentData);
       setSubscriptions(subscriptionsData || []);
-      setTeachers(teachersData || []);
+      const list = teachersData || [];
+      setTeachers(list);
+
+      // Build suggestions: subjects student wants but has no subscription yet, sorted by distance
+      if (studentData?.residence_lat && studentData?.residence_lng && Array.isArray(studentData?.subject_selections)) {
+        const activeSubjects = new Set((subscriptionsData || []).map((s: any) => s.subject));
+        const neededSubjects = (studentData.subject_selections as string[]).filter((s: string) => !activeSubjects.has(s));
+        const haversine = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+          const toRad = (v: number) => (v * Math.PI) / 180;
+          const R = 6371; // km
+          const dLat = toRad(lat2 - lat1);
+          const dLon = toRad(lon2 - lon1);
+          const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+          return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+        };
+        const nearby: any[] = [];
+        for (const t of list) {
+          if (!t.business_lat || !t.business_lng || !Array.isArray(t.subjects)) continue;
+          const dist = haversine(studentData.residence_lat, studentData.residence_lng, t.business_lat, t.business_lng);
+          const overlap = (t.subjects as string[]).filter((s) => neededSubjects.includes(s));
+          if (overlap.length > 0) {
+            nearby.push({ ...t, distance_km: dist, matched_subjects: overlap });
+          }
+        }
+        nearby.sort((a, b) => a.distance_km - b.distance_km);
+        setSuggestions(nearby.slice(0, 10));
+      } else {
+        setSuggestions([]);
+      }
     } catch (error) {
       console.error('Error fetching student data:', error);
       toast.error('Failed to load dashboard data');
@@ -199,7 +228,45 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ onSignOut }) => {
           <TabsContent value="teachers">
             <Card>
               <CardHeader>
-                <CardTitle>Available Teachers</CardTitle>
+                <CardTitle>Teachers Near You (Matching Your Subjects)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {suggestions.length === 0 ? (
+                  <p className="text-sm text-gray-600">No nearby matches yet. Make sure you added subjects during registration and enabled location.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {suggestions.map((t) => (
+                      <div key={t.id} className="border rounded-lg p-4">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-lg">{t.profiles.full_name}</h3>
+                            <p className="text-gray-600">Subjects match: {t.matched_subjects.join(', ')}</p>
+                            <p className="text-sm text-gray-500">Experience: {t.experience_years} years • {t.curriculum}</p>
+                            <p className="text-sm text-gray-500">Distance: {t.distance_km.toFixed(1)} km • Location: {t.location_city}</p>
+                            <div className="flex items-center mt-2">
+                              <span className="text-yellow-500">★</span>
+                              <span className="ml-1 text-sm">{(t.rating ?? 4.5).toFixed ? (t.rating ?? 4.5).toFixed(1) : Number(t.rating ?? 4.5).toFixed(1)}</span>
+                            </div>
+                            <div className="mt-2">
+                              <a className="text-sm underline" href={`https://www.google.com/maps/search/?api=1&query=${t.business_lat},${t.business_lng}`} target="_blank" rel="noreferrer">
+                                View on Google Maps
+                              </a>
+                            </div>
+                          </div>
+                          <Button size="sm">Contact Teacher</Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <div className="h-6" />
+
+            <Card>
+              <CardHeader>
+                <CardTitle>All Available Teachers</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -215,7 +282,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ onSignOut }) => {
                           <p className="text-sm text-gray-500">Location: {teacher.location_city}</p>
                           <div className="flex items-center mt-2">
                             <span className="text-yellow-500">★</span>
-                            <span className="ml-1 text-sm">{teacher.rating.toFixed(1)}</span>
+                            <span className="ml-1 text-sm">{(teacher.rating ?? 4.5).toFixed ? (teacher.rating ?? 4.5).toFixed(1) : Number(teacher.rating ?? 4.5).toFixed(1)}</span>
                           </div>
                         </div>
                         <Button size="sm">Contact Teacher</Button>
