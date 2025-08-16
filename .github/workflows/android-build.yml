@@ -43,8 +43,9 @@ jobs:
       - name: Decode keystore (optional)
         run: |
           if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-            echo "Decoding keystore..."
+            echo "Decoding keystore to ./release.keystore"
             echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > release.keystore
+            ls -l release.keystore
           else
             echo "No KEYSTORE_BASE64 secret provided; skipping keystore decode."
           fi
@@ -53,26 +54,33 @@ jobs:
       - name: Build APK (debug)
         run: |
           if [ -f "./gradlew" ]; then
-            ./gradlew assembleDebug
+            ./gradlew :app:assembleDebug --no-daemon
           else
             sudo apt-get update
             sudo apt-get install -y gradle
-            gradle assembleDebug
+            gradle :app:assembleDebug
           fi
         env:
           JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
+          # provide signing env to Gradle if used; empty values are fine for debug
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Build APK (release)
         run: |
           if [ -f "./gradlew" ]; then
-            ./gradlew assembleRelease
+            ./gradlew :app:assembleRelease --no-daemon
           else
             sudo apt-get update
             sudo apt-get install -y gradle
-            gradle assembleRelease
+            gradle :app:assembleRelease
           fi
         env:
           JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
