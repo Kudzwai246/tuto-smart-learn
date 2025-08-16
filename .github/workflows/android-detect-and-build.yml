@@ -1,0 +1,119 @@
+name: Android CI - Detect Modules & Build APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      module:
+        description: 'Module name to build (example: app or mobile). If left empty, defaults to app.'
+        required: false
+        default: 'app'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx1g"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        id: setup-java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Print repo root listing and show settings.gradle (if present)
+        run: |
+          echo "=== Repo root listing ==="
+          ls -la
+          echo
+          if [ -f settings.gradle ]; then
+            echo "=== settings.gradle ==="
+            cat settings.gradle || true
+            echo
+          elif [ -f settings.gradle.kts ]; then
+            echo "=== settings.gradle.kts ==="
+            cat settings.gradle.kts || true
+            echo
+          else
+            echo "No settings.gradle found in repo root."
+          fi
+        shell: bash
+
+      - name: Make gradlew executable if present
+        run: |
+          if [ -f "./gradlew" ]; then
+            echo "Found gradlew -> making executable"
+            chmod +x ./gradlew
+          else
+            echo "No gradlew in repo root; will use system gradle if needed."
+          fi
+        shell: bash
+
+      - name: List Gradle projects (shows module names)
+        run: |
+          echo "=== Gradle projects (to detect module names) ==="
+          if [ -f "./gradlew" ]; then
+            ./gradlew projects --no-daemon || true
+          else
+            sudo apt-get update
+            sudo apt-get install -y gradle
+            gradle projects || true
+          fi
+        shell: bash
+
+      - name: Decode keystore (optional)
+        run: |
+          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "Decoding keystore to ./release.keystore"
+            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > release.keystore
+            ls -l release.keystore
+          else
+            echo "No KEYSTORE_BASE64 secret provided; skipping keystore decode."
+          fi
+        shell: bash
+
+      - name: Build APK (debug) for chosen module
+        run: |
+          # Use workflow input module if provided, otherwise default to "app"
+          MODULE="${{ github.event.inputs.module }}"
+          MODULE=${MODULE:-app}
+          echo "Building module: '$MODULE' (debug)"
+          if [ -f "./gradlew" ]; then
+            ./gradlew :$MODULE:assembleDebug --no-daemon
+          else
+            sudo apt-get update
+            sudo apt-get install -y gradle
+            gradle :$MODULE:assembleDebug
+          fi
+        env:
+          JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
+        shell: bash
+
+      - name: Build APK (release) for chosen module
+        run: |
+          MODULE="${{ github.event.inputs.module }}"
+          MODULE=${MODULE:-app}
+          echo "Building module: '$MODULE' (release)"
+          if [ -f "./gradlew" ]; then
+            ./gradlew :$MODULE:assembleRelease --no-daemon
+          else
+            sudo apt-get update
+            sudo apt-get install -y gradle
+            gradle :$MODULE:assembleRelease
+          fi
+        env:
+          JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
+        shell: bash
+
+      - name: Upload build artifacts (any APKs found)
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-apks
+          path: |
+            **/build/outputs/**/*.apk
