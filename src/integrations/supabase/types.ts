@@ -14,6 +14,53 @@ export type Database = {
   }
   public: {
     Tables: {
+      payments: {
+        Row: {
+          amount_usd: number
+          created_at: string
+          id: string
+          platform_fee_usd: number
+          status: string
+          student_id: string
+          subscription_id: string | null
+          teacher_id: string
+          teacher_payout_usd: number
+          updated_at: string
+        }
+        Insert: {
+          amount_usd: number
+          created_at?: string
+          id?: string
+          platform_fee_usd: number
+          status?: string
+          student_id: string
+          subscription_id?: string | null
+          teacher_id: string
+          teacher_payout_usd: number
+          updated_at?: string
+        }
+        Update: {
+          amount_usd?: number
+          created_at?: string
+          id?: string
+          platform_fee_usd?: number
+          status?: string
+          student_id?: string
+          subscription_id?: string | null
+          teacher_id?: string
+          teacher_payout_usd?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -41,6 +88,33 @@ export type Database = {
           phone?: string | null
           updated_at?: string
           user_type?: string | null
+        }
+        Relationships: []
+      }
+      ratings: {
+        Row: {
+          comment: string | null
+          created_at: string
+          id: string
+          rating: number
+          student_id: string
+          teacher_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          rating: number
+          student_id: string
+          teacher_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          rating?: number
+          student_id?: string
+          teacher_id?: string
         }
         Relationships: []
       }
@@ -103,6 +177,33 @@ export type Database = {
           },
         ]
       }
+      subjects: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          level: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          id?: string
+          level?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          level?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           created_at: string
@@ -159,6 +260,66 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      teacher_documents: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          doc_type: string | null
+          file_path: string
+          id: string
+          status: string
+          teacher_id: string
+          updated_at: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          doc_type?: string | null
+          file_path: string
+          id?: string
+          status?: string
+          teacher_id: string
+          updated_at?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          doc_type?: string | null
+          file_path?: string
+          id?: string
+          status?: string
+          teacher_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      teacher_subjects: {
+        Row: {
+          approved: boolean
+          created_at: string
+          id: string
+          subject_id: string
+          teacher_id: string
+          updated_at: string
+        }
+        Insert: {
+          approved?: boolean
+          created_at?: string
+          id?: string
+          subject_id: string
+          teacher_id: string
+          updated_at?: string
+        }
+        Update: {
+          approved?: boolean
+          created_at?: string
+          id?: string
+          subject_id?: string
+          teacher_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       teachers: {
         Row: {
@@ -230,7 +391,33 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_teacher_income_projection: {
+        Args: { _teacher_id: string }
+        Returns: {
+          group_students: number
+          monthly_revenue: number
+          one_on_one_students: number
+          teacher_share: number
+        }[]
+      }
+      get_teachers_nearby_by_subject: {
+        Args: { _limit?: number; _student_id: string; _subject: string }
+        Returns: {
+          distance_km: number
+          full_name: string
+          location_city: string
+          rating: number
+          teacher_id: string
+        }[]
+      }
+      haversine_km: {
+        Args: { lat1: number; lat2: number; lon1: number; lon2: number }
+        Returns: number
+      }
+      is_admin: {
+        Args: { _uid: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
