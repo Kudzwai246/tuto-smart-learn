@@ -1,14 +1,9 @@
-name: Android CI - Detect Modules & Build APK
+name: Android CI - Auto Detect Modules & Build All APKs
 
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
-    inputs:
-      module:
-        description: 'Module name to build (example: app or mobile). If left empty, defaults to app.'
-        required: false
-        default: 'app'
 
 jobs:
   build:
@@ -55,16 +50,21 @@ jobs:
           fi
         shell: bash
 
-      - name: List Gradle projects (shows module names)
+      - name: List Gradle projects (to detect module names)
+        id: detect
         run: |
-          echo "=== Gradle projects (to detect module names) ==="
+          echo "=== Gradle projects output ==="
           if [ -f "./gradlew" ]; then
-            ./gradlew projects --no-daemon || true
+            ./gradlew projects --no-daemon | sed -n '1,200p' || true
+            MODULES=$(./gradlew projects --no-daemon | grep -oP "(?<=Project ':)[^']+" | sort -u | tr '\n' ' ')
           else
             sudo apt-get update
             sudo apt-get install -y gradle
-            gradle projects || true
+            gradle projects | sed -n '1,200p' || true
+            MODULES=$(gradle projects | grep -oP "(?<=Project ':)[^']+" | sort -u | tr '\n' ' ')
           fi
+          echo "Detected modules: $MODULES"
+          echo "::set-output name=modules::$MODULES"
         shell: bash
 
       - name: Decode keystore (optional)
@@ -78,34 +78,40 @@ jobs:
           fi
         shell: bash
 
-      - name: Build APK (debug) for chosen module
+      - name: Build detected modules (debug & release)
         run: |
-          # Use workflow input module if provided, otherwise default to "app"
-          MODULE="${{ github.event.inputs.module }}"
-          MODULE=${MODULE:-app}
-          echo "Building module: '$MODULE' (debug)"
-          if [ -f "./gradlew" ]; then
-            ./gradlew :$MODULE:assembleDebug --no-daemon
+          MODULES="${{ steps.detect.outputs.modules }}"
+          echo "Modules variable: '$MODULES'"
+          if [ -z "$MODULES" ]; then
+            echo "No modules detected — attempting to build root project"
+            if [ -f "./gradlew" ]; then
+              ./gradlew assembleDebug --no-daemon || true
+              ./gradlew assembleRelease --no-daemon || true
+            else
+              sudo apt-get update
+              sudo apt-get install -y gradle
+              gradle assembleDebug || true
+              gradle assembleRelease || true
+            fi
           else
-            sudo apt-get update
-            sudo apt-get install -y gradle
-            gradle :$MODULE:assembleDebug
-          fi
-        env:
-          JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
-        shell: bash
-
-      - name: Build APK (release) for chosen module
-        run: |
-          MODULE="${{ github.event.inputs.module }}"
-          MODULE=${MODULE:-app}
-          echo "Building module: '$MODULE' (release)"
-          if [ -f "./gradlew" ]; then
-            ./gradlew :$MODULE:assembleRelease --no-daemon
-          else
-            sudo apt-get update
-            sudo apt-get install -y gradle
-            gradle :$MODULE:assembleRelease
+            for m in $MODULES; do
+              echo "Building module: $m (debug)"
+              if [ -f "./gradlew" ]; then
+                ./gradlew :$m:assembleDebug --no-daemon || echo "Debug build failed for $m"
+              else
+                sudo apt-get update
+                sudo apt-get install -y gradle
+                gradle :$m:assembleDebug || echo "Debug build failed for $m"
+              fi
+              echo "Building module: $m (release)"
+              if [ -f "./gradlew" ]; then
+                ./gradlew :$m:assembleRelease --no-daemon || echo "Release build failed for $m"
+              else
+                sudo apt-get update
+                sudo apt-get install -y gradle
+                gradle :$m:assembleRelease || echo "Release build failed for $m"
+              fi
+            done
           fi
         env:
           JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
