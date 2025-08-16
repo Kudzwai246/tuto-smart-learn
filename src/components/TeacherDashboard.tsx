@@ -8,6 +8,7 @@ import { BookOpen, Calendar, DollarSign, User, LogOut, Star } from 'lucide-react
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import TutoLogo from './TutoLogo';
+import TeacherEarningsCalculator from './TeacherEarningsCalculator';
 
 interface TeacherDashboardProps {
   onSignOut: () => void;
@@ -147,7 +148,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onSignOut }) => {
           <TabsList>
             <TabsTrigger value="students">My Students</TabsTrigger>
             <TabsTrigger value="schedule">Schedule</TabsTrigger>
-            <TabsTrigger value="earnings">Earnings</TabsTrigger>
+            <TabsTrigger value="earnings">Earnings Calculator</TabsTrigger>
           </TabsList>
 
           <TabsContent value="students">
@@ -231,46 +232,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onSignOut }) => {
           </TabsContent>
 
           <TabsContent value="earnings">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <DollarSign className="w-5 h-5 mr-2" />
-                  Earnings Overview
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-green-600">
-                      ${subscriptions.reduce((sum, s) => sum + (s.price_usd || 0), 0).toFixed(2)}
-                    </p>
-                    <p className="text-sm text-gray-500">Total Monthly Revenue</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-blue-600">
-                      ${(subscriptions.reduce((sum, s) => sum + (s.price_usd || 0), 0) * 0.9).toFixed(2)}
-                    </p>
-                    <p className="text-sm text-gray-500">Your Share (90%)</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-gray-600">
-                      {subscriptions.filter(s => s.status === 'active').length}
-                    </p>
-                    <p className="text-sm text-gray-500">Active Students</p>
-                  </div>
-                </div>
-                
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h3 className="font-semibold text-blue-800 mb-2">Earning Information</h3>
-                  <ul className="text-sm text-blue-700 space-y-1">
-                    <li>• You earn 90% of all subscription fees</li>
-                    <li>• Payments are processed monthly</li>
-                    <li>• Payment integration coming soon</li>
-                    <li>• Detailed earnings reports will be available</li>
-                  </ul>
-                </div>
-              </CardContent>
-            </Card>
+            <TeacherEarningsCalculator teacherId={profile?.id} />
           </TabsContent>
         </Tabs>
       </div>
