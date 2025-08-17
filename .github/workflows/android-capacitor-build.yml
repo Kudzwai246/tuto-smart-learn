@@ -48,10 +48,7 @@ jobs:
           echo
           echo "=== Check plugin android dirs and show build.gradle head (if present) ==="
           for P in app haptics keyboard status-bar android '@capacitor'; do
-            # try a few patterns
             for DIR in \
-              "node_modules/@capacitor/${P}/android" \
-              "node_modules/@capacitor/${P}" \
               "node_modules/@capacitor/${P}/android" \
               "node_modules/@capacitor/${P}" \
               "../node_modules/@capacitor/${P}/android" \
@@ -118,11 +115,9 @@ jobs:
         run: |
           GR_CMD="${{ steps.prepare-gradle.outputs.GRADLE_CMD }}"
           echo "Using gradle command: $GR_CMD"
-          # Print overall projects tree
           if [ "$GR_CMD" = "./android/gradlew" ]; then
             cd android
             ./gradlew projects --no-daemon || true
-            # Try printing properties for common plugin projects (if present)
             ./gradlew :capacitor-android:properties --no-daemon || true
             ./gradlew :capacitor-app:properties --no-daemon || true
             ./gradlew :capacitor-haptics:properties --no-daemon || true
