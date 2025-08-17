@@ -63,6 +63,11 @@ export type Database = {
       }
       profiles: {
         Row: {
+          consent_date: string | null
+          consent_location: boolean | null
+          consent_parental: boolean | null
+          consent_privacy: boolean | null
+          consent_verification: boolean | null
           created_at: string
           email: string | null
           full_name: string | null
@@ -72,6 +77,11 @@ export type Database = {
           user_type: string | null
         }
         Insert: {
+          consent_date?: string | null
+          consent_location?: boolean | null
+          consent_parental?: boolean | null
+          consent_privacy?: boolean | null
+          consent_verification?: boolean | null
           created_at?: string
           email?: string | null
           full_name?: string | null
@@ -81,6 +91,11 @@ export type Database = {
           user_type?: string | null
         }
         Update: {
+          consent_date?: string | null
+          consent_location?: boolean | null
+          consent_parental?: boolean | null
+          consent_privacy?: boolean | null
+          consent_verification?: boolean | null
           created_at?: string
           email?: string | null
           full_name?: string | null

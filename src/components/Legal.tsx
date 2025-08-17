@@ -4,22 +4,63 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ArrowLeft, Shield, MapPin, User, FileText, Eye } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import TutoLogo from './TutoLogo';
 
 interface LegalProps {
   onBack?: () => void;
+  onConsentSaved?: () => void;
 }
 
-const Legal: React.FC<LegalProps> = ({ onBack }) => {
+const Legal: React.FC<LegalProps> = ({ onBack, onConsentSaved }) => {
+  const { toast } = useToast();
   const [consentStates, setConsentStates] = useState({
     location: false,
     privacy: false,
     parental: false,
     verification: false
   });
+  const [saving, setSaving] = useState(false);
 
   const updateConsent = (type: keyof typeof consentStates, value: boolean) => {
     setConsentStates(prev => ({ ...prev, [type]: value }));
+  };
+
+  const handleSaveConsent = async () => {
+    setSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No authenticated user');
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          consent_location: consentStates.location,
+          consent_privacy: consentStates.privacy,
+          consent_parental: consentStates.parental,
+          consent_verification: consentStates.verification,
+          consent_date: new Date().toISOString()
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Consent Saved",
+        description: "Your consent preferences have been saved successfully.",
+      });
+
+      onConsentSaved?.();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save consent preferences",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -177,9 +218,10 @@ const Legal: React.FC<LegalProps> = ({ onBack }) => {
                 <div className="flex justify-center pt-4">
                   <Button 
                     className="w-full max-w-sm"
-                    disabled={!Object.values(consentStates).every(Boolean)}
+                    disabled={!Object.values(consentStates).every(Boolean) || saving}
+                    onClick={handleSaveConsent}
                   >
-                    Save Consent Preferences
+                    {saving ? "Saving..." : "Save Consent Preferences"}
                   </Button>
                 </div>
               </TabsContent>
