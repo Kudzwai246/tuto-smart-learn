@@ -1,4 +1,4 @@
-name: Android CI - Capacitor (install node_modules & build)
+name: Android CI - Capacitor (install node_modules, inspect & build)
 
 on:
   push:
@@ -37,17 +37,44 @@ jobs:
           npx cap sync android || npx cap update android || true
         shell: bash
 
-      - name: Show repo root & android/settings.gradle (debug)
+      - name: Node modules / Capacitor plugin folders - diagnostic
         run: |
-          echo "=== Repo root listing ==="
-          ls -la
+          echo "=== node_modules/@capacitor listing (if present) ==="
+          if [ -d node_modules/@capacitor ]; then
+            ls -la node_modules/@capacitor || true
+          else
+            echo "node_modules/@capacitor not present"
+          fi
           echo
-          echo "=== android listing ==="
-          ls -la android || echo "No android directory"
-          echo
+          echo "=== Check plugin android dirs and show build.gradle head (if present) ==="
+          for P in app haptics keyboard status-bar android '@capacitor'; do
+            # try a few patterns
+            for DIR in \
+              "node_modules/@capacitor/${P}/android" \
+              "node_modules/@capacitor/${P}" \
+              "node_modules/@capacitor/${P}/android" \
+              "node_modules/@capacitor/${P}" \
+              "../node_modules/@capacitor/${P}/android" \
+              "../node_modules/@capacitor/${P}"; do
+              if [ -d "$DIR" ]; then
+                echo "FOUND: $DIR"
+                if [ -f "$DIR/build.gradle" ]; then
+                  echo "---- top of $DIR/build.gradle ----"
+                  sed -n '1,200p' "$DIR/build.gradle" || true
+                  echo "---- end preview ----"
+                else
+                  echo "No build.gradle at $DIR"
+                fi
+              fi
+            done
+          done
+        shell: bash
+
+      - name: Show android/settings.gradle (debug)
+        run: |
           echo "=== android/settings.gradle (first 200 lines) ==="
           if [ -f android/settings.gradle ]; then
-            sed -n '1,200p' android/settings.gradle
+            sed -n '1,200p' android/settings.gradle || true
           else
             echo "ERROR: android/settings.gradle not found!"
             exit 2
@@ -85,6 +112,33 @@ jobs:
             echo "GRADLE_CMD=${GR_HOME}/bin/gradle" >> $GITHUB_OUTPUT
             chmod +x ${GR_HOME}/bin/gradle
           fi
+        shell: bash
+
+      - name: Gradle diagnostic: projects and plugin properties
+        run: |
+          GR_CMD="${{ steps.prepare-gradle.outputs.GRADLE_CMD }}"
+          echo "Using gradle command: $GR_CMD"
+          # Print overall projects tree
+          if [ "$GR_CMD" = "./android/gradlew" ]; then
+            cd android
+            ./gradlew projects --no-daemon || true
+            # Try printing properties for common plugin projects (if present)
+            ./gradlew :capacitor-android:properties --no-daemon || true
+            ./gradlew :capacitor-app:properties --no-daemon || true
+            ./gradlew :capacitor-haptics:properties --no-daemon || true
+            ./gradlew :capacitor-keyboard:properties --no-daemon || true
+            ./gradlew :capacitor-status-bar:properties --no-daemon || true
+            cd ..
+          else
+            "$GR_CMD" -p android projects --no-daemon || true
+            "$GR_CMD" -p android :capacitor-android:properties --no-daemon || true
+            "$GR_CMD" -p android :capacitor-app:properties --no-daemon || true
+            "$GR_CMD" -p android :capacitor-haptics:properties --no-daemon || true
+            "$GR_CMD" -p android :capacitor-keyboard:properties --no-daemon || true
+            "$GR_CMD" -p android :capacitor-status-bar:properties --no-daemon || true
+          fi
+        env:
+          JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
         shell: bash
 
       - name: Decode keystore (optional)
