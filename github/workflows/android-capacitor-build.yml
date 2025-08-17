@@ -31,6 +31,12 @@ jobs:
           fi
         shell: bash
 
+      - name: Run Capacitor sync (generate native Android projects)
+        run: |
+          echo "Running Capacitor sync..."
+          npx cap sync android || npx cap update android || true
+        shell: bash
+
       - name: Show repo root & android folder (debug)
         run: |
           echo "=== Repo root listing ==="
