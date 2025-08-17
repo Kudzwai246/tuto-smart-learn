@@ -1,0 +1,6 @@
+ext {
+  cdvMinSdkVersion = 22
+  cdvBuildToolsVersion = '30.0.3'
+  cdvTargetSdkVersion = 34
+  cdvCompileSdkVersion = 34
+}
