@@ -2,7 +2,8 @@ name: Android CI - Capacitor (install node_modules, inspect & build)
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
@@ -19,25 +20,26 @@ jobs:
       - name: Set up Node (for npm install)
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'npm'
+          node-version: "18"
+          cache: "npm"
 
       - name: Install npm dependencies (npm ci if lockfile present)
+        shell: bash
         run: |
           if [ -f package-lock.json ]; then
             npm ci --no-audit --no-fund
           else
             npm install --no-audit --no-fund
           fi
-        shell: bash
 
       - name: Run Capacitor sync (generate native Android projects)
+        shell: bash
         run: |
           echo "Running Capacitor sync..."
           npx cap sync android || npx cap update android || true
-        shell: bash
 
       - name: Node modules / Capacitor plugin folders - diagnostic
+        shell: bash
         run: |
           echo "=== node_modules/@capacitor listing (if present) ==="
           if [ -d node_modules/@capacitor ]; then
@@ -47,7 +49,7 @@ jobs:
           fi
           echo
           echo "=== Check plugin android dirs and show build.gradle head (if present) ==="
-          for P in app haptics keyboard status-bar android '@capacitor'; do
+          for P in app haptics keyboard status-bar android; do
             for DIR in \
               "node_modules/@capacitor/${P}/android" \
               "node_modules/@capacitor/${P}" \
@@ -65,9 +67,9 @@ jobs:
               fi
             done
           done
-        shell: bash
 
       - name: Show android/settings.gradle (debug)
+        shell: bash
         run: |
           echo "=== android/settings.gradle (first 200 lines) ==="
           if [ -f android/settings.gradle ]; then
@@ -76,16 +78,16 @@ jobs:
             echo "ERROR: android/settings.gradle not found!"
             exit 2
           fi
-        shell: bash
 
       - name: Set up JDK 17
         id: setup-java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: "17"
 
       - name: Make android/gradlew executable if present
+        shell: bash
         run: |
           if [ -f "./android/gradlew" ]; then
             chmod +x ./android/gradlew
@@ -94,10 +96,10 @@ jobs:
           else
             echo "No android/gradlew found; will download Gradle ${GRADLE_VERSION}"
           fi
-        shell: bash
 
       - name: Prepare Gradle (download if wrapper missing)
         id: prepare-gradle
+        shell: bash
         run: |
           if [ -f "./android/gradlew" ]; then
             echo "GRADLE_CMD=./android/gradlew" >> $GITHUB_OUTPUT
@@ -109,9 +111,11 @@ jobs:
             echo "GRADLE_CMD=${GR_HOME}/bin/gradle" >> $GITHUB_OUTPUT
             chmod +x ${GR_HOME}/bin/gradle
           fi
-        shell: bash
 
       - name: Gradle diagnostic: projects and plugin properties
+        shell: bash
+        env:
+          JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
         run: |
           GR_CMD="${{ steps.prepare-gradle.outputs.GRADLE_CMD }}"
           echo "Using gradle command: $GR_CMD"
@@ -132,11 +136,9 @@ jobs:
             "$GR_CMD" -p android :capacitor-keyboard:properties --no-daemon || true
             "$GR_CMD" -p android :capacitor-status-bar:properties --no-daemon || true
           fi
-        env:
-          JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
-        shell: bash
 
       - name: Decode keystore (optional)
+        shell: bash
         run: |
           if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
             mkdir -p android
@@ -145,11 +147,12 @@ jobs:
           else
             echo "No KEYSTORE_BASE64 secret provided; skipping keystore decode."
           fi
-        shell: bash
 
       - name: Build debug (android/)
+        shell: bash
+        env:
+          JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
         run: |
-          set -e
           GR_CMD="${{ steps.prepare-gradle.outputs.GRADLE_CMD }}"
           echo "Using gradle command: $GR_CMD"
           if [ "$GR_CMD" = "./android/gradlew" ]; then
@@ -159,14 +162,14 @@ jobs:
           else
             "$GR_CMD" -p android assembleDebug --no-daemon
           fi
-        env:
-          JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
-        shell: bash
 
       - name: Build release (android/)
+        shell: bash
+        env:
+          JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
         run: |
-          set -e || true
           GR_CMD="${{ steps.prepare-gradle.outputs.GRADLE_CMD }}"
+          echo "Using gradle command: $GR_CMD"
           if [ "$GR_CMD" = "./android/gradlew" ]; then
             cd android
             ./gradlew assembleRelease --no-daemon || true
@@ -174,15 +177,12 @@ jobs:
           else
             "$GR_CMD" -p android assembleRelease --no-daemon || true
           fi
-        env:
-          JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
-        shell: bash
 
       - name: Show built APK locations
+        shell: bash
         run: |
           echo "=== Searching for APKs ==="
           find . -type f -name "*.apk" -print || echo "No APKs found."
-        shell: bash
 
       - name: Upload build artifacts (any APKs found)
         uses: actions/upload-artifact@v4
