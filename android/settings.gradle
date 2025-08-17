@@ -1,34 +1,65 @@
-// Root Android settings for the Capacitor project
-// (Replace the file android/settings.gradle with this content)
+// android/settings.gradle (replace with this content)
+// Smart conditional includes for Capacitor plugin modules.
+// This file will include plugin projects only if the target directory exists
+// (so CI won't try to include non-existent paths and produce confusing errors).
 
+// Always include the app module (expected to be in android/app)
 include ':app'
 
-// Capacitor helper plugin already present in your repo
-include ':capacitor-cordova-android-plugins'
-project(':capacitor-cordova-android-plugins').projectDir = new File('./capacitor-cordova-android-plugins/')
+// Capacitor helper plugin already present in your repo (if the folder exists)
+if (file('capacitor-cordova-android-plugins').exists()) {
+    include ':capacitor-cordova-android-plugins'
+    project(':capacitor-cordova-android-plugins').projectDir = file('capacitor-cordova-android-plugins')
+} else {
+    println "capacitor-cordova-android-plugins not found in android/ (skipping)"
+}
 
-// Capacitor Android runtime module (keeps original mapping you had)
-include ':capacitor-android'
-project(':capacitor-android').projectDir = new File('../node_modules/@capacitor/android/capacitor')
+// Helper to include a project if any of the provided candidate paths exist.
+def tryInclude = { String projName, List candidatePaths ->
+    boolean included = false
+    for (p in candidatePaths) {
+        def f = file(p)
+        if (f.exists()) {
+            include ":${projName}"
+            project(":${projName}").projectDir = f
+            println "Included ${projName} -> ${p}"
+            included = true
+            break
+        }
+    }
+    if (!included) {
+        println "Skipping ${projName}: none of paths found: ${candidatePaths}"
+    }
+    return included
+}
 
-// -----------------------------------------------------------------------------
-// Capacitor plugin modules required by android/app/capacitor.build.gradle
-// These map the plugin Gradle projects to the Android folders inside node_modules.
-// Ensure `node_modules` is installed before running Gradle (npm ci / npm install).
-// -----------------------------------------------------------------------------
+// Capacitor runtime (try the common locations)
+tryInclude('capacitor-android', [
+    '../node_modules/@capacitor/android/capacitor',
+    '../node_modules/@capacitor/android'
+])
 
-include ':capacitor-app'
-project(':capacitor-app').projectDir = new File('../node_modules/@capacitor/app/android')
+// Capacitor plugin modules (common locations inside node_modules)
+tryInclude('capacitor-app', [
+    '../node_modules/@capacitor/app/android',
+    '../node_modules/@capacitor/app'
+])
 
-include ':capacitor-haptics'
-project(':capacitor-haptics').projectDir = new File('../node_modules/@capacitor/haptics/android')
+tryInclude('capacitor-haptics', [
+    '../node_modules/@capacitor/haptics/android',
+    '../node_modules/@capacitor/haptics'
+])
 
-include ':capacitor-keyboard'
-project(':capacitor-keyboard').projectDir = new File('../node_modules/@capacitor/keyboard/android')
+tryInclude('capacitor-keyboard', [
+    '../node_modules/@capacitor/keyboard/android',
+    '../node_modules/@capacitor/keyboard'
+])
 
-include ':capacitor-status-bar'
-project(':capacitor-status-bar').projectDir = new File('../node_modules/@capacitor/status-bar/android')
+tryInclude('capacitor-status-bar', [
+    '../node_modules/@capacitor/status-bar/android',
+    '../node_modules/@capacitor/status-bar'
+])
 
-// If you add other Capacitor native plugins, include them here similarly, for example:
-// include ':capacitor-camera'
-// project(':capacitor-camera').projectDir = new File('../node_modules/@capacitor/camera/android')
+// Add other plugin includes here using tryInclude(...) if you add more Capacitor plugins.
+// Example:
+// tryInclude('capacitor-camera', ['../node_modules/@capacitor/camera/android', '../node_modules/@capacitor/camera'])
