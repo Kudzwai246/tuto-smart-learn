@@ -1,6 +1,34 @@
+// Root Android settings for the Capacitor project
+// (Replace the file android/settings.gradle with this content)
+
 include ':app'
+
+// Capacitor helper plugin already present in your repo
 include ':capacitor-cordova-android-plugins'
 project(':capacitor-cordova-android-plugins').projectDir = new File('./capacitor-cordova-android-plugins/')
 
+// Capacitor Android runtime module (keeps original mapping you had)
 include ':capacitor-android'
 project(':capacitor-android').projectDir = new File('../node_modules/@capacitor/android/capacitor')
+
+// -----------------------------------------------------------------------------
+// Capacitor plugin modules required by android/app/capacitor.build.gradle
+// These map the plugin Gradle projects to the Android folders inside node_modules.
+// Ensure `node_modules` is installed before running Gradle (npm ci / npm install).
+// -----------------------------------------------------------------------------
+
+include ':capacitor-app'
+project(':capacitor-app').projectDir = new File('../node_modules/@capacitor/app/android')
+
+include ':capacitor-haptics'
+project(':capacitor-haptics').projectDir = new File('../node_modules/@capacitor/haptics/android')
+
+include ':capacitor-keyboard'
+project(':capacitor-keyboard').projectDir = new File('../node_modules/@capacitor/keyboard/android')
+
+include ':capacitor-status-bar'
+project(':capacitor-status-bar').projectDir = new File('../node_modules/@capacitor/status-bar/android')
+
+// If you add other Capacitor native plugins, include them here similarly, for example:
+// include ':capacitor-camera'
+// project(':capacitor-camera').projectDir = new File('../node_modules/@capacitor/camera/android')
