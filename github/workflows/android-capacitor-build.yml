@@ -37,53 +37,21 @@ jobs:
           npx cap sync android || npx cap update android || true
         shell: bash
 
-      - name: Show repo root & android folder (debug)
+      - name: Show repo root & android/settings.gradle (debug)
         run: |
           echo "=== Repo root listing ==="
           ls -la
           echo
           echo "=== android listing ==="
           ls -la android || echo "No android directory"
-        shell: bash
-
-      - name: Ensure Capacitor plugin includes in android/settings.gradle
-        run: |
-          SETTINGS=android/settings.gradle
-          if [ ! -f "$SETTINGS" ]; then
-            echo "No android/settings.gradle found; creating it."
-            mkdir -p android
-            cat > $SETTINGS <<'EOF'
-include ':app'
-include ':capacitor-cordova-android-plugins'
-project(':capacitor-cordova-android-plugins').projectDir = new File('./capacitor-cordova-android-plugins/')
-
-include ':capacitor-android'
-project(':capacitor-android').projectDir = new File('../node_modules/@capacitor/android/capacitor')
-EOF
-          fi
-          # Append plugin includes only if missing
-          if ! grep -q "capacitor-app" "$SETTINGS"; then
-            cat >> $SETTINGS <<'EOF'
-
-// Added by CI: include Capacitor plugin modules from node_modules
-include ':capacitor-app'
-project(':capacitor-app').projectDir = file('../node_modules/@capacitor/app/android')
-
-include ':capacitor-haptics'
-project(':capacitor-haptics').projectDir = file('../node_modules/@capacitor/haptics/android')
-
-include ':capacitor-keyboard'
-project(':capacitor-keyboard').projectDir = file('../node_modules/@capacitor/keyboard/android')
-
-include ':capacitor-status-bar'
-project(':capacitor-status-bar').projectDir = file('../node_modules/@capacitor/status-bar/android')
-
-EOF
+          echo
+          echo "=== android/settings.gradle (first 400 lines) ==="
+          if [ -f android/settings.gradle ]; then
+            sed -n '1,400p' android/settings.gradle
           else
-            echo "capacitor includes already present in $SETTINGS"
+            echo "ERROR: android/settings.gradle not found!"
+            exit 2
           fi
-          echo "---- settings.gradle content (for debug) ----"
-          sed -n '1,200p' "$SETTINGS" || true
         shell: bash
 
       - name: Set up JDK 17
@@ -122,7 +90,6 @@ EOF
       - name: Decode keystore (optional)
         run: |
           if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-            echo "Decoding keystore to ./android/release.keystore"
             mkdir -p android
             echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/release.keystore
             ls -l android/release.keystore || true
@@ -133,6 +100,7 @@ EOF
 
       - name: Build debug (android/)
         run: |
+          set -e
           GR_CMD="${{ steps.prepare-gradle.outputs.GRADLE_CMD }}"
           echo "Using gradle command: $GR_CMD"
           if [ "$GR_CMD" = "./android/gradlew" ]; then
@@ -148,13 +116,14 @@ EOF
 
       - name: Build release (android/)
         run: |
+          set -e || true
           GR_CMD="${{ steps.prepare-gradle.outputs.GRADLE_CMD }}"
           if [ "$GR_CMD" = "./android/gradlew" ]; then
             cd android
-            ./gradlew assembleRelease --no-daemon || echo "assembleRelease failed; check logs"
+            ./gradlew assembleRelease --no-daemon || true
             cd ..
           else
-            "$GR_CMD" -p android assembleRelease --no-daemon || echo "assembleRelease failed; check logs"
+            "$GR_CMD" -p android assembleRelease --no-daemon || true
           fi
         env:
           JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
