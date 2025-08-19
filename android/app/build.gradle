@@ -1,15 +1,14 @@
 apply plugin: 'com.android.application'
 
 android {
-    // Use a valid Java package / namespace for resource linking & code.
-    // If you want a different package, change both namespace and applicationId together.
+    // Use a valid Java package-style namespace (no segments starting with digits)
     namespace 'com.tutosmart.learn'
-    compileSdk 35
+    compileSdk 34
 
     defaultConfig {
         applicationId "com.tutosmart.learn"
         minSdk 22
-        targetSdk 35
+        targetSdk 34
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -20,45 +19,52 @@ android {
         }
     }
 
+    // Ensure Java compatibility matches your JDK in CI (use 17 or 21 depending on your runner)
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    // If you're using Kotlin in the project, you may add kotlinOptions here too.
+
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
-
-    // Force Java compatibility
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
-    }
-    // If your project uses Kotlin, the Kotlin jvm target will be set by ci-compat script below.
 }
 
 repositories {
+    // Keep the flatDir for local plugin jars if present
     flatDir {
-        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+        // local libs dir inside app
+        dirs 'libs'
+        // jars that some Capacitor Cordova plugins put in the repo
+        dirs '../capacitor-cordova-android-plugins/src/main/libs'
     }
 }
 
 dependencies {
+    // app-local libs
     implementation fileTree(dir: 'libs', include: ['*.jar'])
+
+    // ALSO include any jars present inside capacitor-cordova-android-plugins/src/main/libs
+    // (this replaces implementation project(':capacitor-cordova-android-plugins'))
+    implementation fileTree(dir: '../capacitor-cordova-android-plugins/src/main/libs', include: ['*.jar'])
+
     implementation "androidx.appcompat:appcompat:1.6.1"
     implementation 'androidx.core:core-splashscreen:1.0.1'
 
-    // Capacitor runtime module - should be present after npm install + npx cap sync android
+    // Capacitor runtime - keep this as project dependency because this module exists under node_modules
     implementation project(':capacitor-android')
 
     testImplementation "junit:junit:4.13.2"
     androidTestImplementation "androidx.test.ext:junit:1.1.5"
     androidTestImplementation "androidx.test.espresso:espresso-core:3.5.1"
 
-    // Only include the local Cordova plugins project if it exists as an Android project
-    if (project.findProject(':capacitor-cordova-android-plugins') != null) {
-        implementation project(':capacitor-cordova-android-plugins')
-    } else {
-        println "Note: ':capacitor-cordova-android-plugins' not found as Android project; skipping."
-    }
+    // removed: implementation project(':capacitor-cordova-android-plugins')
+    // (We replaced it above with implementation fileTree(...), safer when the folder isn't a module)
 }
 
 apply from: 'capacitor.build.gradle'
