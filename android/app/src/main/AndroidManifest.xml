@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    package="app.lovable.8bc352a7cc3b44b79318b107c46135ad">
+    package="com.tutosmart.learn">
 
     <application
         android:allowBackup="true"
