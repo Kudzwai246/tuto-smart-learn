@@ -32,6 +32,14 @@ jobs:
             npm install --no-audit --no-fund
           fi
 
+      - name: Install Capacitor CLI & native plugin packages (temporary CI fix)
+        shell: bash
+        run: |
+          # Install CLI + the common native plugins referenced by android/settings.gradle and capacitor.build.gradle
+          # --no-save avoids modifying package.json in CI; remove --no-save if you want to persist to package.json locally instead.
+          npm install @capacitor/cli @capacitor/app @capacitor/haptics @capacitor/keyboard @capacitor/status-bar --no-audit --no-fund --no-save || true
+          echo "Installed capacitor packages (CI-only)"
+
       - name: Run Capacitor sync (generate native Android projects)
         shell: bash
         run: |
