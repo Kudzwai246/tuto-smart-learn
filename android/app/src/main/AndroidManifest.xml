@@ -18,8 +18,10 @@
         android:usesCleartextTraffic="true"
         tools:replace="android:allowBackup">
 
+        <!-- Use Capacitor's default BridgeActivity unless you have a custom MainActivity.
+             If you have a custom MainActivity class, replace com.getcapacitor.BridgeActivity with your fully-qualified activity class name. -->
         <activity
-            android:name="app.lovable.8bc352a7cc3b44b79318b107c46135ad.MainActivity"
+            android:name="com.getcapacitor.BridgeActivity"
             android:exported="true"
             android:launchMode="singleTask"
             android:theme="@style/AppTheme.NoActionBarLaunch"
@@ -33,13 +35,13 @@
 
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="app.lovable.8bc352a7cc3b44b79318b107c46135ad.fileprovider"
+            android:authorities="${applicationId}.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
-    </application>
 
+    </application>
 </manifest>
