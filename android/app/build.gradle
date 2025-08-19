@@ -1,13 +1,12 @@
 apply plugin: 'com.android.application'
 
 android {
-    // Updated to Android 15 / API 35 so constants like VANILLA_ICE_CREAM and
-    // windowOptOutEdgeToEdgeEnforcement are available.
-    namespace 'app.lovable.8bc352a7cc3b44b79318b107c46135ad'
+    // Valid Java package name used for resources & code
+    namespace 'com.tutosmart.learn'
     compileSdk 35
 
     defaultConfig {
-        applicationId "app.lovable.8bc352a7cc3b44b79318b107c46135ad"
+        applicationId "com.tutosmart.learn"
         minSdk 22
         targetSdk 35
         versionCode 1
@@ -26,13 +25,14 @@ android {
         }
     }
 
-    // Optional: explicitly set Java compatibility (safe)
+    // Force Java compatibility for all modules (safe)
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
-    // If your project uses Kotlin and you see Kotlin jvm target warnings, add:
-    // kotlinOptions { jvmTarget = "17" }  (only if kotlin plugin used)
+
+    // If you use Kotlin and see JVM target warnings, add:
+    // kotlinOptions { jvmTarget = "17" }
 }
 
 repositories {
@@ -58,7 +58,6 @@ dependencies {
     if (cordovaProj != null) {
         implementation project(':capacitor-cordova-android-plugins')
     } else {
-        // This prints to Gradle logs so CI output explains why the dependency was skipped
         println "Skipping dependency ':capacitor-cordova-android-plugins' - not present as an Android project"
     }
 }
