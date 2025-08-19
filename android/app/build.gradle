@@ -1,7 +1,8 @@
 apply plugin: 'com.android.application'
 
 android {
-    // Valid Java package name used for resources & code
+    // Use a valid Java package / namespace for resource linking & code.
+    // If you want a different package, change both namespace and applicationId together.
     namespace 'com.tutosmart.learn'
     compileSdk 35
 
@@ -12,6 +13,7 @@ android {
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
         aaptOptions {
             // Files and dirs to omit from the packaged APK.
             ignoreAssetsPattern "!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~"
@@ -25,14 +27,12 @@ android {
         }
     }
 
-    // Force Java compatibility for all modules (safe)
+    // Force Java compatibility
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
-
-    // If you use Kotlin and see JVM target warnings, add:
-    // kotlinOptions { jvmTarget = "17" }
+    // If your project uses Kotlin, the Kotlin jvm target will be set by ci-compat script below.
 }
 
 repositories {
@@ -46,19 +46,18 @@ dependencies {
     implementation "androidx.appcompat:appcompat:1.6.1"
     implementation 'androidx.core:core-splashscreen:1.0.1'
 
-    // Capacitor runtime (should be present after `npm install` + `npx cap sync android`)
+    // Capacitor runtime module - should be present after npm install + npx cap sync android
     implementation project(':capacitor-android')
 
     testImplementation "junit:junit:4.13.2"
     androidTestImplementation "androidx.test.ext:junit:1.1.5"
     androidTestImplementation "androidx.test.espresso:espresso-core:3.5.1"
 
-    // Only add the local Cordova plugins project if it actually exists and is included in settings.gradle
-    def cordovaProj = findProject(':capacitor-cordova-android-plugins')
-    if (cordovaProj != null) {
+    // Only include the local Cordova plugins project if it exists as an Android project
+    if (project.findProject(':capacitor-cordova-android-plugins') != null) {
         implementation project(':capacitor-cordova-android-plugins')
     } else {
-        println "Skipping dependency ':capacitor-cordova-android-plugins' - not present as an Android project"
+        println "Note: ':capacitor-cordova-android-plugins' not found as Android project; skipping."
     }
 }
 
