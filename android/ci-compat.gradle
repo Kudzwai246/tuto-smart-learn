@@ -1,0 +1,31 @@
+// ci-compat.gradle
+// Forces all Android subprojects (including node_modules/@capacitor modules) to compile with SDK 35
+// and sets Java/Kotlin targets to 17. This helps CI builds when included modules expect API 35.
+
+subprojects { proj ->
+    proj.afterEvaluate {
+        try {
+            if ((proj.plugins.hasPlugin('com.android.application') || proj.plugins.hasPlugin('com.android.library'))) {
+                if (proj.hasProperty('android')) {
+                    proj.android.compileSdk = 35
+                    if (proj.android.defaultConfig != null) {
+                        proj.android.defaultConfig.targetSdk = 35
+                    }
+                    proj.android.compileOptions {
+                        sourceCompatibility JavaVersion.VERSION_17
+                        targetCompatibility JavaVersion.VERSION_17
+                    }
+                }
+
+                // Set Kotlin jvmTarget if Kotlin is present
+                tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+                    kotlinOptions {
+                        jvmTarget = "17"
+                    }
+                }
+            }
+        } catch (Throwable ignore) {
+            // ignore any modules which do not expose 'android' or kotlin tasks
+        }
+    }
+}
