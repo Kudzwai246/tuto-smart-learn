@@ -1,20 +1,42 @@
-// android/settings.gradle (replace with this content)
+// android/settings.gradle
 // Smart conditional includes for Capacitor plugin modules.
-// This file will include plugin projects only if the target directory exists
-// (so CI won't try to include non-existent paths and produce confusing errors).
+// Include plugin projects only when the target folder exists and looks like an Android library.
 
-// Always include the app module (expected to be in android/app)
 include ':app'
 
-// Capacitor helper plugin already present in your repo (if the folder exists)
-if (file('capacitor-cordova-android-plugins').exists()) {
-    include ':capacitor-cordova-android-plugins'
-    project(':capacitor-cordova-android-plugins').projectDir = file('capacitor-cordova-android-plugins')
-} else {
-    println "capacitor-cordova-android-plugins not found in android/ (skipping)"
+// Helper to include a project only if its folder and build.gradle indicate an Android project.
+def tryIncludeIfAndroid = { String projName, String relPath ->
+    def p = file(relPath)
+    if (!p.exists()) {
+        println "Skipping ${projName}: folder ${relPath} not found"
+        return false
+    }
+
+    def buildFile = new File(p, 'build.gradle')
+    def settingsOk = false
+
+    if (buildFile.exists()) {
+        def text = buildFile.getText('UTF-8')
+        if (text.contains('com.android') || text.contains('com.android.library') || text.contains('com.android.application') || text.contains('plugins {')) {
+            settingsOk = true
+        }
+    }
+
+    if (settingsOk) {
+        include ":${projName}"
+        project(":${projName}").projectDir = p
+        println "Included ${projName} -> ${relPath}"
+        return true
+    } else {
+        println "Skipping ${projName}: build.gradle missing or not an Android library at ${relPath}"
+        return false
+    }
 }
 
-// Helper to include a project if any of the provided candidate paths exist.
+// Try to include capacitor-cordova-android-plugins only if it looks like an Android project
+tryIncludeIfAndroid('capacitor-cordova-android-plugins', 'capacitor-cordova-android-plugins')
+
+// Capacitor runtime (try common locations)
 def tryInclude = { String projName, List candidatePaths ->
     boolean included = false
     for (p in candidatePaths) {
@@ -33,13 +55,11 @@ def tryInclude = { String projName, List candidatePaths ->
     return included
 }
 
-// Capacitor runtime (try the common locations)
 tryInclude('capacitor-android', [
     '../node_modules/@capacitor/android/capacitor',
     '../node_modules/@capacitor/android'
 ])
 
-// Capacitor plugin modules (common locations inside node_modules)
 tryInclude('capacitor-app', [
     '../node_modules/@capacitor/app/android',
     '../node_modules/@capacitor/app'
@@ -59,7 +79,3 @@ tryInclude('capacitor-status-bar', [
     '../node_modules/@capacitor/status-bar/android',
     '../node_modules/@capacitor/status-bar'
 ])
-
-// Add other plugin includes here using tryInclude(...) if you add more Capacitor plugins.
-// Example:
-// tryInclude('capacitor-camera', ['../node_modules/@capacitor/camera/android', '../node_modules/@capacitor/camera'])
