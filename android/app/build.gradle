@@ -24,7 +24,7 @@ android {
 }
 
 repositories {
-    flatDir{
+    flatDir {
         dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
     }
 }
@@ -33,11 +33,22 @@ dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation "androidx.appcompat:appcompat:1.6.1"
     implementation 'androidx.core:core-splashscreen:1.0.1'
+
+    // Capacitor runtime (should be present after `npm install` + `npx cap sync android`)
     implementation project(':capacitor-android')
+
     testImplementation "junit:junit:4.13.2"
     androidTestImplementation "androidx.test.ext:junit:1.1.5"
     androidTestImplementation "androidx.test.espresso:espresso-core:3.5.1"
-    implementation project(':capacitor-cordova-android-plugins')
+
+    // Only add the local Cordova plugins project if it actually exists and is included in settings.gradle
+    def cordovaProj = findProject(':capacitor-cordova-android-plugins')
+    if (cordovaProj != null) {
+        implementation project(':capacitor-cordova-android-plugins')
+    } else {
+        // This prints to Gradle logs so CI output explains why the dependency was skipped
+        println "Skipping dependency ':capacitor-cordova-android-plugins' - not present as an Android project"
+    }
 }
 
 apply from: 'capacitor.build.gradle'
