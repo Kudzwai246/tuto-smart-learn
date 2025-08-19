@@ -112,7 +112,7 @@ jobs:
             chmod +x ${GR_HOME}/bin/gradle
           fi
 
-      - name: Gradle diagnostic: projects and plugin properties
+      - name: "Gradle diagnostic: projects and plugin properties"
         shell: bash
         env:
           JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
