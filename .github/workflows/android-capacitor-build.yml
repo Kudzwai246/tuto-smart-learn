@@ -19,8 +19,8 @@ jobs:
       - name: Set up Node (for npm install)
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'npm'
+          node-version: "18"
+          cache: "npm"
 
       - name: Install npm dependencies (npm ci if lockfile present)
         shell: bash
@@ -34,11 +34,13 @@ jobs:
       - name: Install Capacitor CLI & common plugins (temporary)
         shell: bash
         run: |
+          # Install CLI and common plugins so npx cap sync works in CI
           npm install @capacitor/cli @capacitor/app @capacitor/haptics @capacitor/keyboard @capacitor/status-bar --no-audit --no-fund --no-save || true
 
       - name: Run Capacitor sync for Android (generate native projects)
         shell: bash
         run: |
+          # Will create/refresh android/ from the web app.
           npx cap sync android || npx cap update android || true
 
       - name: Show android/settings.gradle (debug)
@@ -58,21 +60,24 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Install Android SDK 35 & build-tools
+      - name: Install Android SDK 35 & build-tools 35.0.0
         shell: bash
         env:
           ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
         run: |
-          # Ensure sdkmanager exists and install platform 35 and build-tools 35.0.0
+          echo "Checking for sdkmanager..."
           if command -v sdkmanager >/dev/null 2>&1; then
+            echo "sdkmanager found. Installing platform Android-35 and build-tools 35.0.0..."
             yes | sdkmanager --sdk_root=$ANDROID_SDK_ROOT "platforms;android-35" "build-tools;35.0.0" || true
           else
-            echo "sdkmanager not found; attempting to install Android SDK tools"
-            # Try to set ANDROID_SDK_ROOT to common location and retry
-            export ANDROID_SDK_ROOT="$HOME/Android/Sdk"
-            yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platforms;android-35" "build-tools;35.0.0" || true
+            echo "sdkmanager not found in PATH. Attempting common locations..."
+            if [ -d "$ANDROID_SDK_ROOT/cmdline-tools" ]; then
+              yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0" || true
+            else
+              echo "Warning: sdkmanager not available; platform tools may be missing. Build may fail."
+            fi
           fi
-          echo "Done SDK install check."
+          echo "Finished SDK install step."
 
       - name: Make android/gradlew executable if present
         shell: bash
@@ -82,7 +87,7 @@ jobs:
             echo "Using android/gradlew"
             ls -l android/gradlew
           else
-            echo "No android/gradlew found; will download Gradle ${GRADLE_VERSION}"
+            echo "No android/gradlew found; workflow will download Gradle ${GRADLE_VERSION}"
           fi
 
       - name: Prepare Gradle (download if wrapper missing)
