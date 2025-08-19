@@ -9,20 +9,19 @@ jobs:
   build-android:
     runs-on: ubuntu-latest
     env:
-      GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx1g"
       GRADLE_VERSION: "8.2.1"
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node (for npm install)
+      - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: "18"
           cache: "npm"
 
-      - name: Install npm dependencies (npm ci if lockfile present)
+      - name: Install npm dependencies
         shell: bash
         run: |
           if [ -f package-lock.json ]; then
@@ -34,129 +33,90 @@ jobs:
       - name: Install Capacitor CLI & common plugins (temporary)
         shell: bash
         run: |
-          # Install CLI and common plugins so npx cap sync works in CI
           npm install @capacitor/cli @capacitor/app @capacitor/haptics @capacitor/keyboard @capacitor/status-bar --no-audit --no-fund --no-save || true
 
-      - name: Run Capacitor sync for Android (generate native projects)
+      - name: Run Capacitor sync for Android
         shell: bash
         run: |
-          # Will create/refresh android/ from the web app.
           npx cap sync android || npx cap update android || true
 
-      - name: Show android/settings.gradle (debug)
-        shell: bash
-        run: |
-          echo "=== android/settings.gradle (first 200 lines) ==="
-          if [ -f android/settings.gradle ]; then
-            sed -n '1,200p' android/settings.gradle || true
-          else
-            echo "No android/settings.gradle found"
-          fi
-
       - name: Set up JDK 21
-        id: setup-java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: "21"
 
-      - name: Install Android SDK 35 & build-tools 35.0.0
+      - name: Install Android SDK 35 & build-tools 35.0.0 (best-effort)
         shell: bash
         env:
           ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
         run: |
-          echo "Checking for sdkmanager..."
           if command -v sdkmanager >/dev/null 2>&1; then
-            echo "sdkmanager found. Installing platform Android-35 and build-tools 35.0.0..."
-            yes | sdkmanager --sdk_root=$ANDROID_SDK_ROOT "platforms;android-35" "build-tools;35.0.0" || true
+            yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" "platforms;android-35" "build-tools;35.0.0" || true
           else
-            echo "sdkmanager not found in PATH. Attempting common locations..."
-            if [ -d "$ANDROID_SDK_ROOT/cmdline-tools" ]; then
+            # try common alternative location (may not exist on hosted runner)
+            if [ -x "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
               yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0" || true
             else
-              echo "Warning: sdkmanager not available; platform tools may be missing. Build may fail."
+              echo "sdkmanager not found; continuing. Platform 35 may be missing."
             fi
           fi
-          echo "Finished SDK install step."
 
       - name: Make android/gradlew executable if present
         shell: bash
         run: |
           if [ -f "./android/gradlew" ]; then
             chmod +x ./android/gradlew
-            echo "Using android/gradlew"
-            ls -l android/gradlew
+            ls -l android/gradlew || true
           else
-            echo "No android/gradlew found; workflow will download Gradle ${GRADLE_VERSION}"
+            echo "No android/gradlew found in repo root/android; will download Gradle if needed."
           fi
 
-      - name: Prepare Gradle (download if wrapper missing)
-        id: prepare-gradle
+      - name: Ensure gradle CLI present (download if wrapper missing)
         shell: bash
         run: |
           if [ -f "./android/gradlew" ]; then
-            echo "GRADLE_CMD=./android/gradlew" >> $GITHUB_OUTPUT
+            echo "Wrapper present; will use android/gradlew"
           else
             ZIP=gradle-${GRADLE_VERSION}-bin.zip
-            curl -sSLO https://services.gradle.org/distributions/${ZIP}
-            unzip -q ${ZIP}
-            GR_HOME=$(pwd)/gradle-${GRADLE_VERSION}
-            echo "GRADLE_CMD=${GR_HOME}/bin/gradle" >> $GITHUB_OUTPUT
-            chmod +x ${GR_HOME}/bin/gradle
+            curl -sSLO "https://services.gradle.org/distributions/${ZIP}"
+            unzip -q "${ZIP}"
+            chmod +x gradle-${GRADLE_VERSION}/bin/gradle
+            echo "Downloaded gradle ${GRADLE_VERSION} to ./gradle-${GRADLE_VERSION}"
           fi
 
-      - name: Gradle diagnostic: projects (debug)
+      - name: Build debug and release (android/)
         shell: bash
         env:
           JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
         run: |
-          GR_CMD="${{ steps.prepare-gradle.outputs.GRADLE_CMD }}"
-          echo "Using gradle command: $GR_CMD"
-          if [ "$GR_CMD" = "./android/gradlew" ]; then
-            cd android
-            ./gradlew projects --no-daemon || true
-            cd ..
+          # Decide which gradle command to use
+          if [ -f "./android/gradlew" ]; then
+            GRADLE_CMD="./android/gradlew"
           else
-            "$GR_CMD" -p android projects --no-daemon || true
+            GRADLE_CMD="$(pwd)/gradle-${GRADLE_VERSION}/bin/gradle"
+          fi
+          echo "Using Gradle command: $GRADLE_CMD"
+
+          # Run inside android/ if gradlew exists there (so relative paths work)
+          if [ -d "android" ]; then
+            pushd android >/dev/null
+            $GRADLE_CMD assembleDebug --no-daemon
+            $GRADLE_CMD assembleRelease --no-daemon || true
+            popd >/dev/null
+          else
+            # If no android folder, try running gradle with -p android
+            $GRADLE_CMD -p android assembleDebug --no-daemon || true
+            $GRADLE_CMD -p android assembleRelease --no-daemon || true
           fi
 
-      - name: Build debug (android/)
-        shell: bash
-        env:
-          JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
-        run: |
-          GR_CMD="${{ steps.prepare-gradle.outputs.GRADLE_CMD }}"
-          echo "Using gradle command: $GR_CMD"
-          if [ "$GR_CMD" = "./android/gradlew" ]; then
-            cd android
-            ./gradlew assembleDebug --no-daemon
-            cd ..
-          else
-            "$GR_CMD" -p android assembleDebug --no-daemon
-          fi
-
-      - name: Build release (android/)
-        shell: bash
-        env:
-          JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
-        run: |
-          GR_CMD="${{ steps.prepare-gradle.outputs.GRADLE_CMD }}"
-          echo "Using gradle command: $GR_CMD"
-          if [ "$GR_CMD" = "./android/gradlew" ]; then
-            cd android
-            ./gradlew assembleRelease --no-daemon || true
-            cd ..
-          else
-            "$GR_CMD" -p android assembleRelease --no-daemon || true
-          fi
-
-      - name: Show built APK locations
+      - name: Find APKs
         shell: bash
         run: |
-          echo "=== Searching for APKs ==="
+          echo "=== APKs found ==="
           find . -type f -name "*.apk" -print || echo "No APKs found."
 
-      - name: Upload build artifacts (any APKs found)
+      - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
           name: app-apks
