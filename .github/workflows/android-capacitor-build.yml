@@ -1,13 +1,9 @@
-name: Android CI - Capacitor (install node_modules & build)
+name: Android CI - Capacitor Build
 
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
-
-env:
-  GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx1g"
-  GRADLE_VERSION: "8.2.1"
 
 jobs:
   build-android:
@@ -17,169 +13,88 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Show repo root (quick debug)
-        run: |
-          echo "=== Repo root listing ==="
-          ls -la
-        shell: bash
-
-      - name: Set up Node (for npm install & Capacitor)
+      - name: Set up Node 20
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: Set up JDK 21
-        id: setup-java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: "21"
 
-      - name: Install npm dependencies (install or ci)
+      - name: Install npm dependencies
         run: |
-          # Install npm deps: prefer npm ci when lockfile exists
           if [ -f package-lock.json ]; then
-            echo "Using npm ci (package-lock.json present)"
             npm ci --no-audit --no-fund
           else
-            echo "No lockfile found — using npm install"
             npm install --no-audit --no-fund
           fi
         shell: bash
 
       - name: Build web assets (if build script exists)
-        run: |
-          # run build only if present; --if-present ensures success when script missing
-          npm run build --if-present
-          echo "Web build finished (if there was a build script)."
+        run: npm run build --if-present
         shell: bash
 
-      - name: Ensure android platform exists and sync Capacitor
+      - name: Ensure android platform & Capacitor sync
         run: |
-          # Make sure node_modules exists and Capacitor CLI available via npx
+          # Make sure node_modules exist
           if [ ! -d node_modules ]; then
-            echo "node_modules missing — installing"
             npm install --no-audit --no-fund
           fi
 
-          # If android folder not present, add platform
+          # Add android platform if missing
           if [ ! -d android ]; then
-            echo "Adding Android platform (npx cap add android)"
-            npx cap add android || { echo "cap add failed"; exit 1; }
-          else
-            echo "android/ already present"
+            npx cap add android
           fi
 
-          # Sync web assets & native plugins
-          echo "Running npx cap sync android"
+          # Sync web assets and native plugins
           npx cap sync android
         env:
           JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
         shell: bash
 
-      - name: Show repo root & android folder (debug)
+      - name: Make android/gradlew executable (if present)
         run: |
-          echo "=== Repo root listing ==="
-          ls -la
-          echo
-          echo "=== android listing ==="
-          ls -la android || echo "No android directory"
-          echo
-          echo "=== android/app/src/main listing ==="
-          ls -la android/app/src/main || true
-          echo
-        shell: bash
-
-      - name: Ensure Capacitor plugin includes in android/settings.gradle
-        run: |
-          SETTINGS=android/settings.gradle
-          if [ ! -f "$SETTINGS" ]; then
-            echo "No android/settings.gradle found; creating it."
-            mkdir -p android
-            cat > $SETTINGS <<'EOF'
-include ':app'
-include ':capacitor-cordova-android-plugins'
-project(':capacitor-cordova-android-plugins').projectDir = new File('./capacitor-cordova-android-plugins/')
-
-include ':capacitor-android'
-project(':capacitor-android').projectDir = new File('../node_modules/@capacitor/android/capacitor')
-EOF
-          fi
-
-          # Append plugin includes only if missing
-          if ! grep -q "capacitor-app" "$SETTINGS"; then
-            cat >> $SETTINGS <<'EOF'
-
-// Added by CI: include Capacitor plugin modules from node_modules
-include ':capacitor-app'
-project(':capacitor-app').projectDir = file('../node_modules/@capacitor/app/android')
-
-include ':capacitor-haptics'
-project(':capacitor-haptics').projectDir = file('../node_modules/@capacitor/haptics/android')
-
-include ':capacitor-keyboard'
-project(':capacitor-keyboard').projectDir = file('../node_modules/@capacitor/keyboard/android')
-
-include ':capacitor-status-bar'
-project(':capacitor-status-bar').projectDir = file('../node_modules/@capacitor/status-bar/android')
-
-EOF
+          if [ -f android/gradlew ]; then
+            chmod +x android/gradlew
+            echo "Using repo gradlew"
           else
-            echo "capacitor includes already present in $SETTINGS"
+            echo "No android/gradlew found"
           fi
-
-          echo "---- settings.gradle content (for debug) ----"
-          sed -n '1,200p' "$SETTINGS" || true
         shell: bash
 
-      - name: Make android/gradlew executable if present
+      - name: Prepare Gradle command
+        id: prepare_gradle
         run: |
-          if [ -f "./android/gradlew" ]; then
-            chmod +x ./android/gradlew
-            echo "Using android/gradlew"
-            ls -l android/gradlew
+          if [ -f android/gradlew ]; then
+            echo "gradle_cmd=./android/gradlew" > gradle_cmd.txt
           else
-            echo "No android/gradlew found; will download Gradle ${GRADLE_VERSION}"
+            ZIP="gradle-8.2.1-bin.zip"
+            curl -sSLO "https://services.gradle.org/distributions/${ZIP}"
+            unzip -q "${ZIP}"
+            echo "gradle_cmd=$(pwd)/gradle-8.2.1/bin/gradle" > gradle_cmd.txt
           fi
+          cat gradle_cmd.txt
         shell: bash
 
-      - name: Prepare Gradle (download if wrapper missing)
-        id: prepare-gradle
+      - name: Get GRADLE_CMD
+        id: get_gradle_cmd
         run: |
-          if [ -f "./android/gradlew" ]; then
-            echo "GRADLE_CMD=./android/gradlew" >> $GITHUB_OUTPUT
-          else
-            ZIP=gradle-${GRADLE_VERSION}-bin.zip
-            echo "Downloading Gradle distribution ${ZIP}"
-            curl -sSLO https://services.gradle.org/distributions/${ZIP}
-            unzip -q ${ZIP}
-            GR_HOME=$(pwd)/gradle-${GRADLE_VERSION}
-            echo "GRADLE_CMD=${GR_HOME}/bin/gradle" >> $GITHUB_OUTPUT
-            chmod +x ${GR_HOME}/bin/gradle
-          fi
+          GR=$(cat gradle_cmd.txt | cut -d'=' -f2-)
+          echo "GRADLE_CMD=${GR}"
+          echo "::set-output name=cmd::${GR}"
         shell: bash
 
-      - name: Decode keystore (optional)
+      - name: Build debug APK
         run: |
-          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-            echo "Decoding keystore to ./android/release.keystore"
-            mkdir -p android
-            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/release.keystore
-            ls -l android/release.keystore || true
-          else
-            echo "No KEYSTORE_BASE64 secret provided; skipping keystore decode."
-          fi
-        shell: bash
-
-      - name: Build debug (android/)
-        run: |
-          GR_CMD="${{ steps.prepare-gradle.outputs.GRADLE_CMD }}"
-          echo "Using gradle command: $GR_CMD"
+          GR_CMD="${{ steps.get_gradle_cmd.outputs.cmd }}"
+          echo "Using gradle: $GR_CMD"
           if [ "$GR_CMD" = "./android/gradlew" ]; then
             cd android
             ./gradlew assembleDebug --no-daemon
-            cd ..
           else
             "$GR_CMD" -p android assembleDebug --no-daemon
           fi
@@ -187,27 +102,26 @@ EOF
           JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
         shell: bash
 
-      - name: Build release (android/)
+      - name: Build release APK (attempt)
         run: |
-          GR_CMD="${{ steps.prepare-gradle.outputs.GRADLE_CMD }}"
+          GR_CMD="${{ steps.get_gradle_cmd.outputs.cmd }}"
           if [ "$GR_CMD" = "./android/gradlew" ]; then
             cd android
-            ./gradlew assembleRelease --no-daemon || echo "assembleRelease failed; check logs"
-            cd ..
+            ./gradlew assembleRelease --no-daemon || true
           else
-            "$GR_CMD" -p android assembleRelease --no-daemon || echo "assembleRelease failed; check logs"
+            "$GR_CMD" -p android assembleRelease --no-daemon || true
           fi
         env:
           JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
         shell: bash
 
-      - name: Show built APK locations
+      - name: Show APKs found
         run: |
-          echo "=== Searching for APKs ==="
-          find . -type f -name "*.apk" -print || echo "No APKs found."
+          echo "Looking for APKs..."
+          find . -type f -name "*.apk" -print || echo "No APKs found"
         shell: bash
 
-      - name: Upload build artifacts (any APKs found)
+      - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
           name: app-apks
