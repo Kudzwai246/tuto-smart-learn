@@ -6,72 +6,132 @@ on:
   workflow_dispatch:
 
 env:
+  GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx1g"
   GRADLE_VERSION: "8.2.1"
 
 jobs:
   build-android:
     runs-on: ubuntu-latest
-    env:
-      GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx1g"
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node (for npm install)
+      - name: Show repo root (quick debug)
+        run: |
+          echo "=== Repo root listing ==="
+          ls -la
+        shell: bash
+
+      - name: Set up Node (for npm install & Capacitor)
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
 
-      - name: Install npm dependencies (npm ci if lockfile present)
-        run: |
-          if [ -f package-lock.json ]; then
-            npm ci --no-audit --no-fund
-          else
-            npm install --no-audit --no-fund
-          fi
-        shell: bash
-
-      - name: Build web app (ensure www/public produced) 
-        run: |
-          # run the web build (adjust if your project uses ionic or other build script)
-          if npm run | grep -q 'build'; then
-            npm run build --if-present
-          else
-            echo "No npm build script found. Ensure your project produces a web output (www/ or public/)."
-            exit 1
-          fi
-        shell: bash
-
-      - name: Install Capacitor CLI (if not part of dependencies) & sync android
-        run: |
-          # ensure capacitor CLI is available; prefer local node_modules
-          if ! npx --no-install cap --version >/dev/null 2>&1; then
-            npm install @capacitor/cli --no-save
-          fi
-
-          # Copy native plugin folders and web assets to android platform
-          # Use sync so Android plugin modules are also created/updated
-          npx cap sync android --no-build || npx cap copy android --no-build
-        shell: bash
-
-      - name: Show android/assets debug (list copied files)
-        run: |
-          echo "Listing android/app/src/main/assets (if exists):"
-          ls -la android/app/src/main/assets || echo "no android/app/src/main/assets"
-          echo
-          echo "Listing android/app/src/main/assets/public and www:"
-          ls -la android/app/src/main/assets/public || true
-          ls -la android/app/src/main/assets/www || true
-        shell: bash
-
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         id: setup-java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
+
+      - name: Install npm dependencies (install or ci)
+        run: |
+          # Install npm deps: prefer npm ci when lockfile exists
+          if [ -f package-lock.json ]; then
+            echo "Using npm ci (package-lock.json present)"
+            npm ci --no-audit --no-fund
+          else
+            echo "No lockfile found — using npm install"
+            npm install --no-audit --no-fund
+          fi
+        shell: bash
+
+      - name: Build web assets (if build script exists)
+        run: |
+          # run build only if present; --if-present ensures success when script missing
+          npm run build --if-present
+          echo "Web build finished (if there was a build script)."
+        shell: bash
+
+      - name: Ensure android platform exists and sync Capacitor
+        run: |
+          # Make sure node_modules exists and Capacitor CLI available via npx
+          if [ ! -d node_modules ]; then
+            echo "node_modules missing — installing"
+            npm install --no-audit --no-fund
+          fi
+
+          # If android folder not present, add platform
+          if [ ! -d android ]; then
+            echo "Adding Android platform (npx cap add android)"
+            npx cap add android || { echo "cap add failed"; exit 1; }
+          else
+            echo "android/ already present"
+          fi
+
+          # Sync web assets & native plugins
+          echo "Running npx cap sync android"
+          npx cap sync android
+        env:
+          JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
+        shell: bash
+
+      - name: Show repo root & android folder (debug)
+        run: |
+          echo "=== Repo root listing ==="
+          ls -la
+          echo
+          echo "=== android listing ==="
+          ls -la android || echo "No android directory"
+          echo
+          echo "=== android/app/src/main listing ==="
+          ls -la android/app/src/main || true
+          echo
+        shell: bash
+
+      - name: Ensure Capacitor plugin includes in android/settings.gradle
+        run: |
+          SETTINGS=android/settings.gradle
+          if [ ! -f "$SETTINGS" ]; then
+            echo "No android/settings.gradle found; creating it."
+            mkdir -p android
+            cat > $SETTINGS <<'EOF'
+include ':app'
+include ':capacitor-cordova-android-plugins'
+project(':capacitor-cordova-android-plugins').projectDir = new File('./capacitor-cordova-android-plugins/')
+
+include ':capacitor-android'
+project(':capacitor-android').projectDir = new File('../node_modules/@capacitor/android/capacitor')
+EOF
+          fi
+
+          # Append plugin includes only if missing
+          if ! grep -q "capacitor-app" "$SETTINGS"; then
+            cat >> $SETTINGS <<'EOF'
+
+// Added by CI: include Capacitor plugin modules from node_modules
+include ':capacitor-app'
+project(':capacitor-app').projectDir = file('../node_modules/@capacitor/app/android')
+
+include ':capacitor-haptics'
+project(':capacitor-haptics').projectDir = file('../node_modules/@capacitor/haptics/android')
+
+include ':capacitor-keyboard'
+project(':capacitor-keyboard').projectDir = file('../node_modules/@capacitor/keyboard/android')
+
+include ':capacitor-status-bar'
+project(':capacitor-status-bar').projectDir = file('../node_modules/@capacitor/status-bar/android')
+
+EOF
+          else
+            echo "capacitor includes already present in $SETTINGS"
+          fi
+
+          echo "---- settings.gradle content (for debug) ----"
+          sed -n '1,200p' "$SETTINGS" || true
+        shell: bash
 
       - name: Make android/gradlew executable if present
         run: |
@@ -91,6 +151,7 @@ jobs:
             echo "GRADLE_CMD=./android/gradlew" >> $GITHUB_OUTPUT
           else
             ZIP=gradle-${GRADLE_VERSION}-bin.zip
+            echo "Downloading Gradle distribution ${ZIP}"
             curl -sSLO https://services.gradle.org/distributions/${ZIP}
             unzip -q ${ZIP}
             GR_HOME=$(pwd)/gradle-${GRADLE_VERSION}
@@ -126,7 +187,7 @@ jobs:
           JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
         shell: bash
 
-      - name: Build release (android/) - attempt, but don't fail pipeline if signing missing
+      - name: Build release (android/)
         run: |
           GR_CMD="${{ steps.prepare-gradle.outputs.GRADLE_CMD }}"
           if [ "$GR_CMD" = "./android/gradlew" ]; then
@@ -143,7 +204,7 @@ jobs:
       - name: Show built APK locations
         run: |
           echo "=== Searching for APKs ==="
-          find android -type f -name "*.apk" -print || echo "No APKs found."
+          find . -type f -name "*.apk" -print || echo "No APKs found."
         shell: bash
 
       - name: Upload build artifacts (any APKs found)
@@ -151,4 +212,4 @@ jobs:
         with:
           name: app-apks
           path: |
-            android/**/build/outputs/**/*.apk
+            **/build/outputs/**/*.apk
