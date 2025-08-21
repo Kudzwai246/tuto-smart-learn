@@ -63,6 +63,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           consent_date: string | null
           consent_location: boolean | null
           consent_parental: boolean | null
@@ -77,6 +78,7 @@ export type Database = {
           user_type: string | null
         }
         Insert: {
+          avatar_url?: string | null
           consent_date?: string | null
           consent_location?: boolean | null
           consent_parental?: boolean | null
@@ -91,6 +93,7 @@ export type Database = {
           user_type?: string | null
         }
         Update: {
+          avatar_url?: string | null
           consent_date?: string | null
           consent_location?: boolean | null
           consent_parental?: boolean | null
@@ -109,27 +112,39 @@ export type Database = {
       ratings: {
         Row: {
           comment: string | null
+          communication: number | null
           created_at: string
           id: string
+          punctuality: number | null
           rating: number
           student_id: string
+          subject_knowledge: number | null
           teacher_id: string
+          teaching_quality: number | null
         }
         Insert: {
           comment?: string | null
+          communication?: number | null
           created_at?: string
           id?: string
+          punctuality?: number | null
           rating: number
           student_id: string
+          subject_knowledge?: number | null
           teacher_id: string
+          teaching_quality?: number | null
         }
         Update: {
           comment?: string | null
+          communication?: number | null
           created_at?: string
           id?: string
+          punctuality?: number | null
           rating?: number
           student_id?: string
+          subject_knowledge?: number | null
           teacher_id?: string
+          teaching_quality?: number | null
         }
         Relationships: []
       }
@@ -339,6 +354,7 @@ export type Database = {
       teachers: {
         Row: {
           approved: boolean
+          availability_schedule: Json | null
           business_lat: number | null
           business_lng: number | null
           created_at: string
@@ -349,14 +365,18 @@ export type Database = {
           location_address: string | null
           location_city: string | null
           price_usd: number | null
+          qualification_details: Json | null
           qualifications: string[] | null
           rating: number | null
+          specializations: string[] | null
           status: string | null
           subjects: string[] | null
+          teaching_methodology: string | null
           updated_at: string
         }
         Insert: {
           approved?: boolean
+          availability_schedule?: Json | null
           business_lat?: number | null
           business_lng?: number | null
           created_at?: string
@@ -367,14 +387,18 @@ export type Database = {
           location_address?: string | null
           location_city?: string | null
           price_usd?: number | null
+          qualification_details?: Json | null
           qualifications?: string[] | null
           rating?: number | null
+          specializations?: string[] | null
           status?: string | null
           subjects?: string[] | null
+          teaching_methodology?: string | null
           updated_at?: string
         }
         Update: {
           approved?: boolean
+          availability_schedule?: Json | null
           business_lat?: number | null
           business_lng?: number | null
           created_at?: string
@@ -385,10 +409,13 @@ export type Database = {
           location_address?: string | null
           location_city?: string | null
           price_usd?: number | null
+          qualification_details?: Json | null
           qualifications?: string[] | null
           rating?: number | null
+          specializations?: string[] | null
           status?: string | null
           subjects?: string[] | null
+          teaching_methodology?: string | null
           updated_at?: string
         }
         Relationships: [

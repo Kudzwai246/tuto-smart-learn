@@ -2,8 +2,8 @@
 import { CapacitorConfig } from '@capacitor/core';
 
 const config: CapacitorConfig = {
-  appId: 'app.lovable.8bc352a7cc3b44b79318b107c46135ad',
-  appName: 'tuto-smart-learn',
+  appId: 'com.tutosmart.learn',
+  appName: 'TutoSmart Learn',
   webDir: 'dist',
   server: {
     url: 'https://8bc352a7-cc3b-44b7-9318-b107c46135ad.lovableproject.com?forceHideBadge=true',

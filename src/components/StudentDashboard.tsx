@@ -5,11 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BookOpen, Calendar, CreditCard, User, LogOut, Plus } from 'lucide-react';
+import { BookOpen, Calendar, CreditCard, User, LogOut, Plus, Star, Settings } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import TutoLogo from './TutoLogo';
 import { PAYMENT_METHODS } from '@/types';
+import { ProfileManagement } from './ProfileManagement';
+import { TeacherRatingForm } from './TeacherRatingForm';
+import { TeacherProfileEnhanced } from './TeacherProfileEnhanced';
 
 interface StudentDashboardProps {
   onSignOut: () => void;
@@ -22,6 +25,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ onSignOut }) => {
   const [loading, setLoading] = useState(true);
   const [showNewSubscription, setShowNewSubscription] = useState(false);
   const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showRatingForm, setShowRatingForm] = useState<string | null>(null);
+  const [selectedTeacher, setSelectedTeacher] = useState<string | null>(null);
 
   useEffect(() => {
     fetchStudentData();
@@ -177,6 +182,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ onSignOut }) => {
             <TabsTrigger value="subscriptions">My Subscriptions</TabsTrigger>
             <TabsTrigger value="teachers">Find Teachers</TabsTrigger>
             <TabsTrigger value="payments">Payments</TabsTrigger>
+            <TabsTrigger value="profile">Profile</TabsTrigger>
           </TabsList>
 
           <TabsContent value="subscriptions">
@@ -210,12 +216,24 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ onSignOut }) => {
                               {subscription.lesson_type} • ${subscription.price_usd}/{subscription.duration}
                             </p>
                           </div>
-                          <Badge variant={
-                            subscription.status === 'active' ? 'default' :
-                            subscription.status === 'pending' ? 'secondary' : 'outline'
-                          }>
-                            {subscription.status}
-                          </Badge>
+                          <div className="flex flex-col gap-2">
+                            <Badge variant={
+                              subscription.status === 'active' ? 'default' :
+                              subscription.status === 'pending' ? 'secondary' : 'outline'
+                            }>
+                              {subscription.status}
+                            </Badge>
+                            {subscription.status === 'active' && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setShowRatingForm(subscription.teacher_id)}
+                              >
+                                <Star className="w-4 h-4 mr-2" />
+                                Rate Teacher
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -253,7 +271,15 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ onSignOut }) => {
                               </a>
                             </div>
                           </div>
-                          <Button size="sm">Contact Teacher</Button>
+                          <div className="flex flex-col gap-2">
+                            <Button 
+                              size="sm"
+                              onClick={() => setSelectedTeacher(t.id)}
+                            >
+                              View Profile
+                            </Button>
+                            <Button size="sm" variant="outline">Contact Teacher</Button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -285,7 +311,15 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ onSignOut }) => {
                             <span className="ml-1 text-sm">{(teacher.rating ?? 4.5).toFixed ? (teacher.rating ?? 4.5).toFixed(1) : Number(teacher.rating ?? 4.5).toFixed(1)}</span>
                           </div>
                         </div>
-                        <Button size="sm">Contact Teacher</Button>
+                        <div className="flex flex-col gap-2">
+                          <Button 
+                            size="sm"
+                            onClick={() => setSelectedTeacher(teacher.id)}
+                          >
+                            View Profile
+                          </Button>
+                          <Button size="sm" variant="outline">Contact Teacher</Button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -337,7 +371,47 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ onSignOut }) => {
               </CardContent>
             </Card>
           </TabsContent>
+
+          <TabsContent value="profile">
+            <ProfileManagement userId={profile?.id} />
+          </TabsContent>
         </Tabs>
+
+        {/* Rating Form Modal */}
+        {showRatingForm && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <TeacherRatingForm
+              teacherId={showRatingForm}
+              studentId={profile?.id}
+              onRatingSubmitted={() => {
+                setShowRatingForm(null);
+                fetchStudentData();
+              }}
+              onCancel={() => setShowRatingForm(null)}
+            />
+          </div>
+        )}
+
+        {/* Teacher Profile Modal */}
+        {selectedTeacher && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-2xl font-bold">Teacher Profile</h2>
+                  <Button variant="ghost" onClick={() => setSelectedTeacher(null)}>
+                    ×
+                  </Button>
+                </div>
+                <TeacherProfileEnhanced
+                  teacherId={selectedTeacher}
+                  showContactButton={true}
+                  onContact={() => toast.info('Contact feature coming soon!')}
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

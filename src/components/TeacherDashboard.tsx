@@ -4,11 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BookOpen, Calendar, DollarSign, User, LogOut, Star } from 'lucide-react';
+import { BookOpen, Calendar, DollarSign, User, LogOut, Star, Settings, Award } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import TutoLogo from './TutoLogo';
 import TeacherEarningsCalculator from './TeacherEarningsCalculator';
+import { ProfileManagement } from './ProfileManagement';
+import { TeacherQualificationForm } from './TeacherQualificationForm';
 
 interface TeacherDashboardProps {
   onSignOut: () => void;
@@ -149,6 +151,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onSignOut }) => {
             <TabsTrigger value="students">My Students</TabsTrigger>
             <TabsTrigger value="schedule">Schedule</TabsTrigger>
             <TabsTrigger value="earnings">Earnings Calculator</TabsTrigger>
+            <TabsTrigger value="qualifications">Qualifications</TabsTrigger>
+            <TabsTrigger value="profile">Profile</TabsTrigger>
           </TabsList>
 
           <TabsContent value="students">
@@ -233,6 +237,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onSignOut }) => {
 
           <TabsContent value="earnings">
             <TeacherEarningsCalculator teacherId={profile?.id} />
+          </TabsContent>
+
+          <TabsContent value="qualifications">
+            <TeacherQualificationForm teacherId={profile?.id} />
+          </TabsContent>
+
+          <TabsContent value="profile">
+            <ProfileManagement userId={profile?.id} />
           </TabsContent>
         </Tabs>
       </div>

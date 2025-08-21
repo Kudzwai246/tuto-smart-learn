@@ -4,10 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, GraduationCap, BookOpen, DollarSign, Eye, LogOut } from 'lucide-react';
+import { Users, GraduationCap, BookOpen, DollarSign, Eye, LogOut, Settings } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import TutoLogo from './TutoLogo';
+import { ProfileManagement } from './ProfileManagement';
 
 interface AdminDashboardProps {
   onSignOut: () => void;
@@ -26,6 +27,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSignOut }) => {
   const [teachers, setTeachers] = useState<any[]>([]);
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentAdmin, setCurrentAdmin] = useState<any>(null);
 
   useEffect(() => {
     fetchDashboardData();
@@ -33,6 +35,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSignOut }) => {
 
   const fetchDashboardData = async () => {
     try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: adminProfile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        setCurrentAdmin(adminProfile);
+      }
+
       // Fetch students with their profiles
       const { data: studentsData } = await supabase
         .from('students')
@@ -128,7 +141,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSignOut }) => {
               <TutoLogo size="sm" />
               <div>
                 <h1 className="text-xl font-semibold text-gray-900">Admin Dashboard</h1>
-                <p className="text-sm text-gray-500">Kudzwai Madyavanhu - CEO & Co-Founder</p>
+                <p className="text-sm text-gray-500">
+                  {currentAdmin?.email === 'luckilyimat@gmail.com' 
+                    ? 'Kudzwai Madyavanhu - CEO & Co-Founder'
+                    : currentAdmin?.email === 'chiwandiretakunda75@gmail.com'
+                    ? 'Takunda Chiwandire - COO & Co-Founder'
+                    : 'Administrator'
+                  }
+                </p>
               </div>
             </div>
             <Button variant="outline" onClick={handleSignOut}>
@@ -199,6 +219,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSignOut }) => {
             <TabsTrigger value="teachers">Teachers</TabsTrigger>
             <TabsTrigger value="students">Students</TabsTrigger>
             <TabsTrigger value="subscriptions">Subscriptions</TabsTrigger>
+            <TabsTrigger value="profile">Profile</TabsTrigger>
           </TabsList>
 
           <TabsContent value="teachers">
@@ -309,6 +330,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSignOut }) => {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="profile">
+            {currentAdmin && <ProfileManagement userId={currentAdmin.id} />}
           </TabsContent>
         </Tabs>
       </div>
