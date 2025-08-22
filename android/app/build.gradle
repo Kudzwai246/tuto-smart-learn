@@ -1,7 +1,6 @@
 apply plugin: 'com.android.application'
 
 android {
-    // Use a valid Java package-style namespace (no segments starting with digits)
     namespace 'com.tutosmart.learn'
     compileSdk 34
 

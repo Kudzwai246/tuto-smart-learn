@@ -40,17 +40,18 @@ jobs:
 
       - name: Ensure android platform & Capacitor sync
         run: |
-          # Make sure node_modules exist
-          if [ ! -d node_modules ]; then
-            npm install --no-audit --no-fund
+          # Clean any existing android directory to avoid conflicts
+          if [ -d android ]; then
+            echo "Removing existing android directory..."
+            rm -rf android
           fi
 
-          # Add android platform if missing
-          if [ ! -d android ]; then
-            npx cap add android
-          fi
+          # Add android platform
+          echo "Adding Android platform..."
+          npx cap add android
 
           # Sync web assets and native plugins
+          echo "Syncing Capacitor..."
           npx cap sync android
         env:
           JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
@@ -63,7 +64,8 @@ jobs:
       - name: Build debug APK
         run: |
           cd android
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          echo "Starting debug build..."
+          ./gradlew clean assembleDebug --no-daemon --stacktrace --info
         env:
           JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
         shell: bash
@@ -71,7 +73,8 @@ jobs:
       - name: Build release APK
         run: |
           cd android
-          ./gradlew assembleRelease --no-daemon --stacktrace
+          echo "Starting release build..."
+          ./gradlew assembleRelease --no-daemon --stacktrace --info
         env:
           JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
         shell: bash
