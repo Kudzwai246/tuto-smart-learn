@@ -77,26 +77,33 @@ jobs:
         shell: bash
         continue-on-error: true
 
-      - name: Show APKs found
+      - name: Show build outputs
         run: |
           echo "Looking for APKs..."
           find . -type f -name "*.apk" -print || echo "No APKs found"
+          echo "Contents of android/app/build/outputs:"
+          ls -la android/app/build/outputs/ || echo "outputs directory not found"
+          echo "Contents of android/app/build/outputs/apk:"
+          ls -la android/app/build/outputs/apk/ || echo "apk directory not found"
         shell: bash
 
       - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: tutosmart-apks
           path: |
-            android/app/build/outputs/apk/**/*.apk
+            android/app/build/outputs/apk/debug/*.apk
+            android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: warn
           retention-days: 30
 
-      - name: Upload build reports
+      - name: Upload build logs on failure
         uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: build-reports
+          name: build-logs
           path: |
-            android/app/build/reports/
-            android/app/build/outputs/logs/
+            android/app/build/
+          if-no-files-found: ignore
           retention-days: 7
