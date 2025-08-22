@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#ff6b35</color>
-    <color name="colorPrimaryDark">#e55a2b</color>
-    <color name="colorAccent">#ff6b35</color>
+    <color name="colorPrimary">#FF8C00</color>
+    <color name="colorPrimaryDark">#E67E00</color>
+    <color name="colorAccent">#FF8C00</color>
+    <color name="statusBarColor">#FF8C00</color>
+    <color name="toolbarColor">#FF8C00</color>
+    <color name="navigationBarColor">#FF8C00</color>
+    <color name="splashBackground">#FFFFFF</color>
 </resources>

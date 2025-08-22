@@ -2,6 +2,6 @@
 <resources>
     <string name="app_name">Tuto Smart Learn</string>
     <string name="title_activity_main">Tuto Smart Learn</string>
-    <string name="package_name">app.lovable.8bc352a7cc3b44b79318b107c46135ad</string>
-    <string name="custom_url_scheme">app.lovable.8bc352a7cc3b44b79318b107c46135ad</string>
+    <string name="package_name">com.tutosmart.learn</string>
+    <string name="custom_url_scheme">com.tutosmart.learn</string>
 </resources>
