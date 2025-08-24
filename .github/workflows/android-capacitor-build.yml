@@ -38,21 +38,35 @@ jobs:
         run: npm run build
         shell: bash
 
-      - name: Ensure android platform & Capacitor sync
+      - name: Setup Capacitor config
         run: |
-          # Clean any existing android directory to avoid conflicts
-          if [ -d android ]; then
-            echo "Removing existing android directory..."
-            rm -rf android
-          fi
+          echo "Creating capacitor.config.ts..."
+          cat > capacitor.config.ts << 'EOF'
+          import type { CapacitorConfig } from '@capacitor/cli';
 
-          # Add android platform
+          const config: CapacitorConfig = {
+            appId: 'app.lovable.8bc352a7cc3b44b79318b107c46135ad',
+            appName: 'tuto-smart-learn',
+            webDir: 'dist',
+            server: {
+              androidScheme: 'https'
+            }
+          };
+
+          export default config;
+          EOF
+        shell: bash
+
+      - name: Add android platform & Capacitor sync
+        run: |
           echo "Adding Android platform..."
           npx cap add android
-
-          # Sync web assets and native plugins
+          
           echo "Syncing Capacitor..."
           npx cap sync android
+          
+          echo "Updating Capacitor..."
+          npx cap update android
         env:
           JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
         shell: bash
@@ -61,22 +75,38 @@ jobs:
         run: chmod +x android/gradlew
         shell: bash
 
+      - name: Debug Android configuration
+        run: |
+          echo "=== Android project structure ==="
+          ls -la android/
+          echo "=== Android app structure ==="
+          ls -la android/app/
+          echo "=== Gradle wrapper permissions ==="
+          ls -la android/gradlew
+          echo "=== Capacitor plugins ==="
+          find android -name "*.gradle" -type f | head -10
+        shell: bash
+
       - name: Build debug APK
         run: |
           cd android
           echo "Starting debug build..."
-          ./gradlew clean assembleDebug --no-daemon --stacktrace --info
+          echo "JAVA_HOME: $JAVA_HOME"
+          echo "Android SDK: $ANDROID_HOME"
+          ./gradlew clean assembleDebug --no-daemon --stacktrace --info --warning-mode all
         env:
           JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
+          ANDROID_HOME: /usr/local/lib/android/sdk
         shell: bash
 
       - name: Build release APK
         run: |
           cd android
           echo "Starting release build..."
-          ./gradlew assembleRelease --no-daemon --stacktrace --info
+          ./gradlew assembleRelease --no-daemon --stacktrace --info --warning-mode all
         env:
           JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
+          ANDROID_HOME: /usr/local/lib/android/sdk
         shell: bash
         continue-on-error: true
 

@@ -35,35 +35,22 @@ android {
 }
 
 repositories {
-    // Keep the flatDir for local plugin jars if present
-    flatDir {
-        // local libs dir inside app
-        dirs 'libs'
-        // jars that some Capacitor Cordova plugins put in the repo
-        dirs '../capacitor-cordova-android-plugins/src/main/libs'
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
     }
 }
 
 dependencies {
-    // app-local libs
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-
-    // ALSO include any jars present inside capacitor-cordova-android-plugins/src/main/libs
-    // (this replaces implementation project(':capacitor-cordova-android-plugins'))
-    implementation fileTree(dir: '../capacitor-cordova-android-plugins/src/main/libs', include: ['*.jar'])
-
-    implementation "androidx.appcompat:appcompat:1.6.1"
-    implementation 'androidx.core:core-splashscreen:1.0.1'
-
-    // Capacitor runtime - keep this as project dependency because this module exists under node_modules
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation "androidx.webkit:webkit:$androidxWebkitVersion"
+    
     implementation project(':capacitor-android')
-
-    testImplementation "junit:junit:4.13.2"
-    androidTestImplementation "androidx.test.ext:junit:1.1.5"
-    androidTestImplementation "androidx.test.espresso:espresso-core:3.5.1"
-
-    // removed: implementation project(':capacitor-cordova-android-plugins')
-    // (We replaced it above with implementation fileTree(...), safer when the folder isn't a module)
+    
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
 }
 
 apply from: 'capacitor.build.gradle'
