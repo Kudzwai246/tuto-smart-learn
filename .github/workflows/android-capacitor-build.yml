@@ -24,6 +24,7 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
+        id: setup-java
 
       - name: Install npm dependencies
         run: |
@@ -73,7 +74,11 @@ jobs:
         shell: bash
 
       - name: Make gradlew executable
-        run: chmod +x android/gradlew
+        run: |
+          chmod +x android/gradlew
+          echo "JAVA_HOME will be: ${{ steps.setup-java.outputs.java-home }}"
+          echo "Java version:"
+          java -version
         shell: bash
 
       - name: Debug Android configuration
@@ -94,10 +99,10 @@ jobs:
           echo "Starting debug build..."
           echo "JAVA_HOME: $JAVA_HOME"
           echo "Android SDK: $ANDROID_HOME"
-          echo "Available tasks:"
-          ./gradlew tasks --all | grep -i assemble
+          echo "Java version check:"
+          java -version
           echo "Building APK..."
-          ./gradlew clean assembleDebug --no-daemon --stacktrace --debug
+          ./gradlew clean assembleDebug --no-daemon --stacktrace --info
         env:
           JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
           ANDROID_HOME: /usr/local/lib/android/sdk
