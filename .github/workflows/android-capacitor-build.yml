@@ -62,11 +62,13 @@ jobs:
           echo "Adding Android platform..."
           npx cap add android
           
+          echo "Copying existing Android config files..."
+          if [ -f "android/app/build.gradle" ]; then
+            echo "Android config already exists, keeping it"
+          fi
+          
           echo "Syncing Capacitor..."
           npx cap sync android
-          
-          echo "Updating Capacitor..."
-          npx cap update android
         env:
           JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
         shell: bash
@@ -93,7 +95,10 @@ jobs:
           echo "Starting debug build..."
           echo "JAVA_HOME: $JAVA_HOME"
           echo "Android SDK: $ANDROID_HOME"
-          ./gradlew clean assembleDebug --no-daemon --stacktrace --info --warning-mode all
+          echo "Available tasks:"
+          ./gradlew tasks --all | grep -i assemble
+          echo "Building APK..."
+          ./gradlew clean assembleDebug --no-daemon --stacktrace --debug
         env:
           JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
           ANDROID_HOME: /usr/local/lib/android/sdk
