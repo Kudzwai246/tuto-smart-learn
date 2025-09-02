@@ -60,9 +60,6 @@ jobs:
 
       - name: Add android platform & Capacitor sync
         run: |
-          export JAVA_HOME="${{ steps.setup-java.outputs.java-home }}"
-          echo "JAVA_HOME set to: $JAVA_HOME"
-          
           if [ -d "android" ]; then
             echo "Android platform already exists, syncing only..."
             npx cap sync android
@@ -74,13 +71,16 @@ jobs:
           fi
         shell: bash
 
-      - name: Make gradlew executable
+      - name: Setup Java environment
         run: |
-          export JAVA_HOME="${{ steps.setup-java.outputs.java-home }}"
+          # Find Java home
+          JAVA_HOME_DETECTED=$(dirname $(dirname $(readlink -f $(which java))))
+          echo "JAVA_HOME=$JAVA_HOME_DETECTED" >> $GITHUB_ENV
+          echo "Detected JAVA_HOME: $JAVA_HOME_DETECTED"
+          
           chmod +x android/gradlew
-          echo "JAVA_HOME: $JAVA_HOME"
           echo "Java version:"
-          "$JAVA_HOME/bin/java" -version
+          java -version
         shell: bash
 
       - name: Debug Android configuration
@@ -97,27 +97,25 @@ jobs:
 
       - name: Build debug APK
         run: |
-          export JAVA_HOME="${{ steps.setup-java.outputs.java-home }}"
-          export ANDROID_HOME="/usr/local/lib/android/sdk"
-          
           cd android
           echo "Starting debug build..."
           echo "JAVA_HOME: $JAVA_HOME"
-          echo "Android SDK: $ANDROID_HOME"
+          echo "ANDROID_HOME: $ANDROID_HOME"
           echo "Java version check:"
-          "$JAVA_HOME/bin/java" -version
+          java -version
           echo "Building APK..."
-          JAVA_HOME="$JAVA_HOME" ./gradlew clean assembleDebug --no-daemon --stacktrace --info
+          ./gradlew clean assembleDebug --no-daemon --stacktrace --info
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
         shell: bash
 
       - name: Build release APK
         run: |
-          export JAVA_HOME="${{ steps.setup-java.outputs.java-home }}"
-          export ANDROID_HOME="/usr/local/lib/android/sdk"
-          
           cd android
           echo "Starting release build..."
-          JAVA_HOME="$JAVA_HOME" ./gradlew assembleRelease --no-daemon --stacktrace --info --warning-mode all
+          ./gradlew assembleRelease --no-daemon --stacktrace --info --warning-mode all
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
         shell: bash
         continue-on-error: true
 
