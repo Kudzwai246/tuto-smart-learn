@@ -59,16 +59,15 @@ jobs:
 
       - name: Add android platform & Capacitor sync
         run: |
-          echo "Adding Android platform..."
-          npx cap add android
-          
-          echo "Copying existing Android config files..."
-          if [ -f "android/app/build.gradle" ]; then
-            echo "Android config already exists, keeping it"
+          if [ -d "android" ]; then
+            echo "Android platform already exists, syncing only..."
+            npx cap sync android
+          else
+            echo "Adding Android platform..."
+            npx cap add android
+            echo "Syncing Capacitor..."
+            npx cap sync android
           fi
-          
-          echo "Syncing Capacitor..."
-          npx cap sync android
         env:
           JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
         shell: bash
