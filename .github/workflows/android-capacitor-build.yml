@@ -104,6 +104,8 @@ jobs:
           echo "Java version check:"
           java -version
           echo "Building APK..."
+          export JAVA_HOME=$JAVA_HOME
+          export PATH="$JAVA_HOME/bin:$PATH"
           ./gradlew clean assembleDebug --no-daemon --stacktrace --info
         env:
           ANDROID_HOME: /usr/local/lib/android/sdk
