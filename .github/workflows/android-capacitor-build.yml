@@ -91,8 +91,14 @@ jobs:
           ls -la android/app/
           echo "=== Gradle wrapper permissions ==="
           ls -la android/gradlew
-          echo "=== Capacitor plugins ==="
-          find android -name "*.gradle" -type f | head -10
+          echo "=== Gradle wrapper jar size ==="
+          ls -la android/gradle/wrapper/gradle-wrapper.jar
+          echo "=== Android SDK components ==="
+          ls -la /usr/local/lib/android/sdk/ || echo "Android SDK not found"
+          echo "=== Available SDK platforms ==="
+          ls -la /usr/local/lib/android/sdk/platforms/ || echo "No platforms found"
+          echo "=== Available build tools ==="
+          ls -la /usr/local/lib/android/sdk/build-tools/ || echo "No build tools found"
         shell: bash
 
       - name: Build debug APK
