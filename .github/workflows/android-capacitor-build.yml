@@ -58,6 +58,16 @@ jobs:
           EOF
         shell: bash
 
+      - name: Setup Android SDK components
+        run: |
+          echo "Installing required Android SDK components..."
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-34"
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;34.0.0"
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools"
+          echo "Android SDK components installed"
+        shell: bash
+
       - name: Add android platform & Capacitor sync
         run: |
           if [ -d "android" ]; then
@@ -93,12 +103,18 @@ jobs:
           ls -la android/gradlew
           echo "=== Gradle wrapper jar size ==="
           ls -la android/gradle/wrapper/gradle-wrapper.jar
+          echo "=== Gradle wrapper properties ==="
+          cat android/gradle/wrapper/gradle-wrapper.properties
           echo "=== Android SDK components ==="
-          ls -la /usr/local/lib/android/sdk/ || echo "Android SDK not found"
+          ls -la $ANDROID_HOME/ || echo "Android SDK not found"
           echo "=== Available SDK platforms ==="
-          ls -la /usr/local/lib/android/sdk/platforms/ || echo "No platforms found"
+          ls -la $ANDROID_HOME/platforms/ || echo "No platforms found"
           echo "=== Available build tools ==="
-          ls -la /usr/local/lib/android/sdk/build-tools/ || echo "No build tools found"
+          ls -la $ANDROID_HOME/build-tools/ || echo "No build tools found"
+          echo "=== Platform tools ==="
+          ls -la $ANDROID_HOME/platform-tools/ || echo "No platform tools found"
+          echo "=== Command line tools ==="
+          ls -la $ANDROID_HOME/cmdline-tools/ || echo "No cmdline tools found"
         shell: bash
 
       - name: Build debug APK
@@ -118,6 +134,12 @@ jobs:
           export JAVA_HOME=$JAVA_HOME
           export PATH="$JAVA_HOME/bin:$PATH"
           echo "About to run gradlew with these args: clean assembleDebug --no-daemon --stacktrace --info"
+          echo "Environment variables:"
+          echo "JAVA_HOME: $JAVA_HOME"
+          echo "ANDROID_HOME: $ANDROID_HOME"
+          echo "PATH: $PATH"
+          echo "Gradle wrapper content check:"
+          head -5 gradlew
           ./gradlew --version
           echo "Gradlew version check completed, now building..."
           ./gradlew clean assembleDebug --no-daemon --stacktrace --info
