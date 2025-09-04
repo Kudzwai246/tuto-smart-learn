@@ -88,12 +88,17 @@ jobs:
           fi
         shell: bash
 
-      - name: Clean and prepare build environment
+      - name: Clean Gradle environment
         run: |
-          echo "=== Cleaning build environment ==="
-          rm -rf android/app/build android/build .gradle android/.gradle || true
+          echo "=== Cleaning Gradle environment ==="
+          rm -rf ~/.gradle/caches/
+          rm -rf ~/.gradle/daemon/
+          rm -rf ~/.gradle/wrapper/
+          rm -rf android/.gradle/
+          rm -rf android/build/
+          rm -rf android/app/build/
           rm -rf node_modules/.cache || true
-          echo "✓ Build cache cleaned"
+          echo "✓ Gradle environment cleaned"
         shell: bash
 
       - name: Add android platform & Enhanced Capacitor sync
@@ -193,9 +198,12 @@ jobs:
           ANDROID_HOME: /usr/local/lib/android/sdk
         shell: bash
 
-      - name: Build debug APK
+      - name: Build debug APK with fallback
         run: |
           cd android
+          echo "=== Setting Gradle permissions ==="
+          chmod +x ./gradlew
+          
           echo "=== Starting Android debug build ==="
           
           # Set environment variables for build
@@ -206,28 +214,48 @@ jobs:
           echo "Environment check:"
           echo "JAVA_HOME: $JAVA_HOME"
           echo "ANDROID_HOME: $ANDROID_HOME"
-          echo "PATH: $PATH"
           
-          echo "Gradle version check:"
-          ./gradlew --version --no-daemon
+          echo "=== Building Debug APK (Attempt 1) ==="
+          timeout 15m ./gradlew clean assembleDebug --no-daemon --no-build-cache --no-configuration-cache --stacktrace --info || {
+            echo "=== First attempt failed, cleaning and retrying ==="
+            rm -rf .gradle/ build/ app/build/
+            echo "=== Building Debug APK (Attempt 2) ==="
+            timeout 15m ./gradlew assembleDebug --no-daemon --no-build-cache --stacktrace --warning-mode all
+          }
           
-          echo "Running Gradle diagnostics..."
-          ./gradlew --no-daemon || echo "Gradle diagnostic completed"
-          
-          echo "Starting clean build..."
-          ./gradlew clean --no-daemon --stacktrace
-          
-          echo "Starting debug assembly..."
-          ./gradlew assembleDebug --no-daemon --stacktrace --info
+          echo "=== Verifying Debug APK ==="
+          if [ -f "app/build/outputs/apk/debug/app-debug.apk" ]; then
+            ls -la app/build/outputs/apk/debug/
+            echo "✓ Debug APK created successfully"
+          else
+            echo "✗ Debug APK not found"
+            find . -name "*.apk" -type f 2>/dev/null || echo "No APK files found anywhere"
+            exit 1
+          fi
         env:
           ANDROID_HOME: /usr/local/lib/android/sdk
         shell: bash
 
-      - name: Build release APK
+      - name: Build release APK with fallback
         run: |
           cd android
-          echo "Starting release build..."
-          ./gradlew assembleRelease --no-daemon --stacktrace --info --warning-mode all
+          echo "=== Building Release APK (Attempt 1) ==="
+          timeout 15m ./gradlew assembleRelease --no-daemon --no-build-cache --no-configuration-cache --stacktrace --info || {
+            echo "=== First attempt failed, cleaning and retrying ==="
+            rm -rf .gradle/ build/ app/build/
+            echo "=== Building Release APK (Attempt 2) ==="
+            timeout 15m ./gradlew assembleRelease --no-daemon --no-build-cache --stacktrace --warning-mode all
+          }
+          
+          echo "=== Verifying Release APK ==="
+          if [ -f "app/build/outputs/apk/release/app-release-unsigned.apk" ]; then
+            ls -la app/build/outputs/apk/release/
+            echo "✓ Release APK created successfully"
+          else
+            echo "✗ Release APK not found"
+            find . -name "*.apk" -type f 2>/dev/null || echo "No APK files found anywhere"
+            exit 1
+          fi
         env:
           ANDROID_HOME: /usr/local/lib/android/sdk
         shell: bash
