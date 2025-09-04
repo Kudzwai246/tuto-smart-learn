@@ -26,18 +26,27 @@ if (capacitorAndroidPath != null && capacitorAndroidPath.exists()) {
     project(':capacitor-android').projectDir = capacitorAndroidPath
 }
 
-// Simple helper function for plugin inclusion
+// Enhanced helper function for plugin inclusion with proper validation
 def includeIfExists = { name, relPath ->
     def f = new File(rootDir, "../node_modules/@capacitor/${relPath}")
-    if (f.exists()) {
-        include ":${name}"
-        project(":${name}").projectDir = f
-        return true
+    if (f.exists() && f.isDirectory()) {
+        // Check if it's a valid Android module (has build.gradle)
+        def buildGradle = new File(f, "build.gradle")
+        if (buildGradle.exists()) {
+            include ":${name}"
+            project(":${name}").projectDir = f
+            println "✓ Successfully included Capacitor plugin: ${name}"
+            return true
+        } else {
+            println "⚠ Skipping ${name}: No build.gradle found at ${f.absolutePath}"
+        }
+    } else {
+        println "⚠ Skipping ${name}: Directory not found at ${f.absolutePath}"
     }
     return false
 }
 
-// Include common Capacitor plugins with simplified paths
+// Include common Capacitor plugins with validation
 includeIfExists('capacitor-app', 'app/android')
 includeIfExists('capacitor-haptics', 'haptics/android')
 includeIfExists('capacitor-keyboard', 'keyboard/android')
