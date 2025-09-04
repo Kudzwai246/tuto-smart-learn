@@ -4,11 +4,9 @@ rootProject.name = "tuto-smart-learn"
 // Always include your app module
 include ':app'
 
-// Include capacitor-cordova-android-plugins if present locally
-if (file('capacitor-cordova-android-plugins').exists()) {
-    include ':capacitor-cordova-android-plugins'
-    project(':capacitor-cordova-android-plugins').projectDir = new File('capacitor-cordova-android-plugins')
-}
+// Note: capacitor-cordova-android-plugins is not included as a project
+// because it lacks a proper build.gradle file. We only use its cordova.variables.gradle
+// which is applied directly in capacitor.build.gradle
 
 // Simplified Capacitor Android inclusion - reduced logging for stability
 def nodeModules = new File(rootDir, "../node_modules")
