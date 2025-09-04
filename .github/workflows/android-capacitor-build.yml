@@ -88,17 +88,47 @@ jobs:
           fi
         shell: bash
 
-      - name: Add android platform & Capacitor sync
+      - name: Clean and prepare build environment
         run: |
-          if [ -d "android" ]; then
-            echo "Android platform already exists, syncing only..."
-            npx cap sync android
+          echo "=== Cleaning build environment ==="
+          rm -rf android/app/build android/build .gradle android/.gradle || true
+          rm -rf node_modules/.cache || true
+          echo "✓ Build cache cleaned"
+        shell: bash
+
+      - name: Add android platform & Enhanced Capacitor sync
+        run: |
+          echo "=== Installing Capacitor CLI ==="
+          npm install -g @capacitor/cli
+          
+          echo "=== Adding Android platform ==="
+          npx cap add android --force || echo "Android platform already exists"
+          
+          echo "=== Building web assets ==="
+          npm run build
+          
+          echo "=== Enhanced Capacitor sync with verification ==="
+          npx cap sync android --verbose
+          
+          echo "=== Post-sync verification ==="
+          if [ -f "android/settings.gradle" ]; then
+            echo "✓ Android project exists"
+            echo "Checking Capacitor references in settings.gradle:"
+            grep -n "capacitor" android/settings.gradle || echo "No capacitor references found"
           else
-            echo "Adding Android platform..."
-            npx cap add android
-            echo "Syncing Capacitor..."
-            npx cap sync android
+            echo "✗ Android project missing after sync"
+            exit 1
           fi
+          
+          echo "=== Verifying Capacitor plugins in Android project ==="
+          if [ -d "android/capacitor-cordova-android-plugins" ]; then
+            echo "✓ Capacitor cordova plugins directory exists"
+          else
+            echo "✗ Capacitor cordova plugins directory missing"
+          fi
+          
+          echo "=== Verifying node_modules Capacitor plugins ==="
+          ls -la node_modules/@capacitor/ || echo "No Capacitor plugins in node_modules"
         shell: bash
 
       - name: Setup Java environment
@@ -180,6 +210,9 @@ jobs:
           
           echo "Gradle version check:"
           ./gradlew --version --no-daemon
+          
+          echo "Running Gradle diagnostics..."
+          ./gradlew --no-daemon || echo "Gradle diagnostic completed"
           
           echo "Starting clean build..."
           ./gradlew clean --no-daemon --stacktrace

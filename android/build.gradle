@@ -16,6 +16,9 @@ buildscript {
 // Optional: variables.gradle can set commonly used variables (see suggested file below)
 apply from: "variables.gradle"
 
+// Include diagnostic script for debugging
+apply from: 'gradle-diagnostic.gradle'
+
 // Ensure our CI compatibility script runs to force compileSdk/Java rules for subprojects
 apply from: 'ci-compat.gradle'
 

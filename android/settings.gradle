@@ -10,26 +10,52 @@ if (file('capacitor-cordova-android-plugins').exists()) {
     project(':capacitor-cordova-android-plugins').projectDir = new File('capacitor-cordova-android-plugins')
 }
 
-// Capacitor runtime mapping (node_modules)
+// Capacitor runtime mapping (node_modules) - Enhanced with fallback
 def nodeModules = new File(rootDir, "../node_modules")
 def nm = { path -> new File(nodeModules, path) }
 
-if (nm("@capacitor/android/capacitor").exists() || nm("@capacitor/android").exists()) {
-    include ':capacitor-android'
-    project(':capacitor-android').projectDir = new File('../node_modules/@capacitor/android/capacitor')
+println "=== Capacitor Android Resolution Debug ==="
+println "NodeModules path: ${nodeModules.absolutePath}"
+println "NodeModules exists: ${nodeModules.exists()}"
+
+def capacitorAndroidPath = null
+if (nm("@capacitor/android/capacitor").exists()) {
+    capacitorAndroidPath = new File('../node_modules/@capacitor/android/capacitor')
+    println "Found Capacitor Android at: ${capacitorAndroidPath.absolutePath}"
+} else if (nm("@capacitor/android").exists()) {
+    capacitorAndroidPath = new File('../node_modules/@capacitor/android')
+    println "Found Capacitor Android (fallback) at: ${capacitorAndroidPath.absolutePath}"
+} else {
+    println "ERROR: Capacitor Android not found in node_modules"
+    println "Checked paths:"
+    println "  - ${nm('@capacitor/android/capacitor').absolutePath}"
+    println "  - ${nm('@capacitor/android').absolutePath}"
 }
 
-// Helper function to add plugin if present
+if (capacitorAndroidPath != null) {
+    include ':capacitor-android'
+    project(':capacitor-android').projectDir = capacitorAndroidPath
+    println "✓ Successfully included capacitor-android"
+} else {
+    println "✗ Failed to include capacitor-android - build may fail"
+}
+
+// Enhanced helper function with better debugging
 def includeIfExists = { name, relPaths ->
+    println "=== Attempting to include plugin: ${name} ==="
     for (p in relPaths) {
         def f = new File(rootDir, "../node_modules/@capacitor/${p}")
+        println "  Checking path: ${f.absolutePath}"
         if (f.exists()) {
             include ":${name}"
             project(":${name}").projectDir = f
-            println "Included ${name} -> ${f}"
+            println "  ✓ Successfully included ${name} -> ${f.absolutePath}"
             return true
+        } else {
+            println "  ✗ Path not found: ${f.absolutePath}"
         }
     }
+    println "  ✗ Failed to include ${name} - none of the paths existed"
     return false
 }
 

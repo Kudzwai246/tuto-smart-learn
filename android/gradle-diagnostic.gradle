@@ -1,0 +1,83 @@
+// Gradle diagnostic script for debugging build issues
+// This file provides comprehensive debugging information for Android builds
+
+println "="*60
+println "GRADLE DIAGNOSTIC INFORMATION"
+println "="*60
+
+// Environment information
+println "Environment Information:"
+println "  Gradle version: ${gradle.gradleVersion}"
+println "  Java version: ${System.getProperty('java.version')}"
+println "  Java vendor: ${System.getProperty('java.vendor')}"
+println "  OS: ${System.getProperty('os.name')} ${System.getProperty('os.version')}"
+println "  ANDROID_HOME: ${System.getenv('ANDROID_HOME')}"
+println "  JAVA_HOME: ${System.getenv('JAVA_HOME')}"
+
+// Project information
+println "\nProject Information:"
+println "  Root project: ${rootProject.name}"
+println "  Project directory: ${rootProject.projectDir}"
+println "  Subprojects: ${rootProject.subprojects.collect { it.name }}"
+
+// Capacitor-specific diagnostics
+println "\nCapacitor Diagnostics:"
+def nodeModules = new File(rootProject.projectDir, "../node_modules")
+println "  Node modules path: ${nodeModules.absolutePath}"
+println "  Node modules exists: ${nodeModules.exists()}"
+
+if (nodeModules.exists()) {
+    def capacitorDir = new File(nodeModules, "@capacitor")
+    println "  @capacitor directory exists: ${capacitorDir.exists()}"
+    
+    if (capacitorDir.exists()) {
+        println "  Available Capacitor packages:"
+        capacitorDir.listFiles()?.each { dir ->
+            if (dir.isDirectory()) {
+                println "    - ${dir.name}"
+                def androidDir = new File(dir, "android")
+                def capacitorSubDir = new File(dir, "capacitor")
+                println "      android/ exists: ${androidDir.exists()}"
+                println "      capacitor/ exists: ${capacitorSubDir.exists()}"
+            }
+        }
+    }
+}
+
+// Android SDK diagnostics
+def androidHome = System.getenv('ANDROID_HOME')
+if (androidHome) {
+    def androidSdk = new File(androidHome)
+    println "\nAndroid SDK Diagnostics:"
+    println "  SDK path: ${androidSdk.absolutePath}"
+    println "  SDK exists: ${androidSdk.exists()}"
+    
+    if (androidSdk.exists()) {
+        def buildTools = new File(androidSdk, "build-tools")
+        def platforms = new File(androidSdk, "platforms")
+        
+        println "  Build tools directory exists: ${buildTools.exists()}"
+        if (buildTools.exists()) {
+            println "  Available build tools:"
+            buildTools.listFiles()?.each { tool ->
+                if (tool.isDirectory()) {
+                    println "    - ${tool.name}"
+                }
+            }
+        }
+        
+        println "  Platforms directory exists: ${platforms.exists()}"
+        if (platforms.exists()) {
+            println "  Available platforms:"
+            platforms.listFiles()?.each { platform ->
+                if (platform.isDirectory()) {
+                    println "    - ${platform.name}"
+                }
+            }
+        }
+    }
+}
+
+println "="*60
+println "END DIAGNOSTIC INFORMATION"
+println "="*60
