@@ -108,7 +108,7 @@ jobs:
           npm run build
           
           echo "=== Enhanced Capacitor sync with verification ==="
-          npx cap sync android --verbose
+          npx cap sync android
           
           echo "=== Post-sync verification ==="
           if [ -f "android/settings.gradle" ]; then
