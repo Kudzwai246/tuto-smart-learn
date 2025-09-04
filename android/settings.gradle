@@ -1,69 +1,44 @@
-// android/settings.gradle - root settings for the Android project
+// android/settings.gradle - Simplified settings for stable builds
 rootProject.name = "tuto-smart-learn"
 
 // Always include your app module
 include ':app'
 
-// If you have a local capacitor-cordova-android-plugins directory in repo, include it
+// Include capacitor-cordova-android-plugins if present locally
 if (file('capacitor-cordova-android-plugins').exists()) {
     include ':capacitor-cordova-android-plugins'
     project(':capacitor-cordova-android-plugins').projectDir = new File('capacitor-cordova-android-plugins')
 }
 
-// Capacitor runtime mapping (node_modules) - Enhanced with fallback
+// Simplified Capacitor Android inclusion - reduced logging for stability
 def nodeModules = new File(rootDir, "../node_modules")
-def nm = { path -> new File(nodeModules, path) }
 
-println "=== Capacitor Android Resolution Debug ==="
-println "NodeModules path: ${nodeModules.absolutePath}"
-println "NodeModules exists: ${nodeModules.exists()}"
-
+// Find and include Capacitor Android core
 def capacitorAndroidPath = null
-if (nm("@capacitor/android/capacitor").exists()) {
+if (new File(nodeModules, "@capacitor/android/capacitor").exists()) {
     capacitorAndroidPath = new File('../node_modules/@capacitor/android/capacitor')
-    println "Found Capacitor Android at: ${capacitorAndroidPath.absolutePath}"
-} else if (nm("@capacitor/android").exists()) {
+} else if (new File(nodeModules, "@capacitor/android").exists()) {
     capacitorAndroidPath = new File('../node_modules/@capacitor/android')
-    println "Found Capacitor Android (fallback) at: ${capacitorAndroidPath.absolutePath}"
-} else {
-    println "ERROR: Capacitor Android not found in node_modules"
-    println "Checked paths:"
-    println "  - ${nm('@capacitor/android/capacitor').absolutePath}"
-    println "  - ${nm('@capacitor/android').absolutePath}"
 }
 
-if (capacitorAndroidPath != null) {
+if (capacitorAndroidPath != null && capacitorAndroidPath.exists()) {
     include ':capacitor-android'
     project(':capacitor-android').projectDir = capacitorAndroidPath
-    println "✓ Successfully included capacitor-android"
-} else {
-    println "✗ Failed to include capacitor-android - build may fail"
 }
 
-// Enhanced helper function with better debugging
-def includeIfExists = { name, relPaths ->
-    println "=== Attempting to include plugin: ${name} ==="
-    for (p in relPaths) {
-        def f = new File(rootDir, "../node_modules/@capacitor/${p}")
-        println "  Checking path: ${f.absolutePath}"
-        if (f.exists()) {
-            include ":${name}"
-            project(":${name}").projectDir = f
-            println "  ✓ Successfully included ${name} -> ${f.absolutePath}"
-            return true
-        } else {
-            println "  ✗ Path not found: ${f.absolutePath}"
-        }
+// Simple helper function for plugin inclusion
+def includeIfExists = { name, relPath ->
+    def f = new File(rootDir, "../node_modules/@capacitor/${relPath}")
+    if (f.exists()) {
+        include ":${name}"
+        project(":${name}").projectDir = f
+        return true
     }
-    println "  ✗ Failed to include ${name} - none of the paths existed"
     return false
 }
 
-// Try to include common Capacitor plugins if present
-includeIfExists('capacitor-app', ['app/android', 'app'])
-includeIfExists('capacitor-haptics', ['haptics/android', 'haptics'])
-includeIfExists('capacitor-keyboard', ['keyboard/android', 'keyboard'])
-includeIfExists('capacitor-status-bar', ['status-bar/android', 'status-bar'])
-
-// Add other plugin includes here if you install them later.
-// e.g. includeIfExists('capacitor-camera', ['camera/android','camera'])
+// Include common Capacitor plugins with simplified paths
+includeIfExists('capacitor-app', 'app/android')
+includeIfExists('capacitor-haptics', 'haptics/android')
+includeIfExists('capacitor-keyboard', 'keyboard/android')
+includeIfExists('capacitor-status-bar', 'status-bar/android')

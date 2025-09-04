@@ -89,17 +89,31 @@ jobs:
           fi
         shell: bash
 
-      - name: Clean Gradle environment
+      - name: 🧹 Radical Workspace Cleanup
         run: |
-          echo "=== Cleaning Gradle environment ==="
-          rm -rf ~/.gradle/caches/
-          rm -rf ~/.gradle/daemon/
-          rm -rf ~/.gradle/wrapper/
+          echo "=== Performing radical workspace cleanup ==="
+          # Clean all Gradle-related directories and caches
+          rm -rf ~/.gradle/
+          rm -rf ~/.android/
           rm -rf android/.gradle/
-          rm -rf android/build/
+          rm -rf android/app/.gradle/
           rm -rf android/app/build/
-          rm -rf node_modules/.cache || true
-          echo "✓ Gradle environment cleaned"
+          rm -rf android/build/
+          rm -rf android/capacitor-cordova-android-plugins/.gradle/
+          
+          # Clean any lock files and temporary directories
+          find . -name "*.lock" -type f -delete
+          find . -name ".gradle" -type d -exec rm -rf {} + 2>/dev/null || true
+          find . -name "build" -type d -path "*/android/*" -exec rm -rf {} + 2>/dev/null || true
+          
+          # Clean Gradle daemon processes
+          pkill -f gradle || true
+          
+          # Ensure complete isolation
+          export GRADLE_USER_HOME="/tmp/gradle-$$"
+          mkdir -p "$GRADLE_USER_HOME"
+          
+          echo "✓ Radical cleanup completed - fresh environment ready"
         shell: bash
 
       - name: Add android platform & Enhanced Capacitor sync
@@ -202,37 +216,68 @@ jobs:
           ANDROID_HOME: /usr/local/lib/android/sdk
         shell: bash
 
-      - name: Build debug APK with fallback
+      - name: 🔧 Build Android APK (Debug) - Enhanced Strategy
         run: |
           cd android
-          echo "=== Setting Gradle permissions ==="
-          chmod +x ./gradlew
+          echo "=== Starting Enhanced Debug APK Build ==="
           
-          echo "=== Starting Android debug build ==="
+          # Set up isolated Gradle environment
+          export GRADLE_USER_HOME="/tmp/gradle-build-$$"
+          export GRADLE_OPTS="-Xmx2g -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8"
           
-          # Set environment variables for build
-          export JAVA_HOME=$JAVA_HOME
-          export ANDROID_HOME=$ANDROID_HOME
-          export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/build-tools/34.0.0:$PATH"
+          # Validate environment
+          echo "Build Tools validation:"
+          ls -la $ANDROID_HOME/build-tools/ || echo "No build tools found"
+          echo "Available Gradle wrapper:"
+          ls -la gradlew
           
-          echo "Environment check:"
-          echo "JAVA_HOME: $JAVA_HOME"
-          echo "ANDROID_HOME: $ANDROID_HOME"
+          # Make gradlew executable
+          chmod +x gradlew
           
-          echo "=== Building Debug APK (Attempt 1) ==="
-          timeout 15m ./gradlew clean assembleDebug --no-daemon --no-build-cache --no-configuration-cache --stacktrace --info || {
-            echo "=== First attempt failed, cleaning and retrying ==="
-            rm -rf .gradle/ build/ app/build/
-            echo "=== Building Debug APK (Attempt 2) ==="
-            timeout 15m ./gradlew assembleDebug --no-daemon --no-build-cache --stacktrace --warning-mode all
-          }
+          # Primary build attempt with comprehensive flags
+          echo "=== Primary Build Attempt ==="
+          timeout 600 ./gradlew clean assembleDebug \
+            --stacktrace \
+            --info \
+            --no-daemon \
+            --no-parallel \
+            --no-configure-on-demand \
+            --no-build-cache \
+            --refresh-dependencies \
+            -Dorg.gradle.jvmargs="-Xmx2g -XX:MaxMetaspaceSize=512m" \
+            -Pandroid.useAndroidX=true \
+            -Pandroid.enableJetifier=true \
+            || FIRST_ATTEMPT_FAILED=true
           
-          echo "=== Verifying Debug APK ==="
+          # Fallback build strategy if primary fails
+          if [ "$FIRST_ATTEMPT_FAILED" = "true" ]; then
+            echo "=== Primary attempt failed, trying fallback strategy ==="
+            sleep 10
+            
+            # Clean everything again
+            rm -rf .gradle build app/build
+            
+            # Minimal retry with different flags
+            timeout 600 ./gradlew assembleDebug \
+              --no-daemon \
+              --offline \
+              --stacktrace \
+              || SECOND_ATTEMPT_FAILED=true
+            
+            if [ "$SECOND_ATTEMPT_FAILED" = "true" ]; then
+              echo "=== Both attempts failed, final diagnostic build ==="
+              ./gradlew tasks --all || true
+              ./gradlew dependencies --configuration debugRuntimeClasspath || true
+              exit 1
+            fi
+          fi
+          
+          echo "=== Debug APK Build Complete ==="
           if [ -f "app/build/outputs/apk/debug/app-debug.apk" ]; then
+            echo "✓ Debug APK built successfully"
             ls -la app/build/outputs/apk/debug/
-            echo "✓ Debug APK created successfully"
           else
-            echo "✗ Debug APK not found"
+            echo "✗ Debug APK not found after build"
             find . -name "*.apk" -type f 2>/dev/null || echo "No APK files found anywhere"
             exit 1
           fi
@@ -240,58 +285,86 @@ jobs:
           ANDROID_HOME: /usr/local/lib/android/sdk
         shell: bash
 
-      - name: Build release APK with fallback
+      - name: 🔧 Build Android APK (Release) - Enhanced Strategy
         run: |
           cd android
-          echo "=== Building Release APK (Attempt 1) ==="
-          timeout 15m ./gradlew assembleRelease --no-daemon --no-build-cache --no-configuration-cache --stacktrace --info || {
-            echo "=== First attempt failed, cleaning and retrying ==="
-            rm -rf .gradle/ build/ app/build/
-            echo "=== Building Release APK (Attempt 2) ==="
-            timeout 15m ./gradlew assembleRelease --no-daemon --no-build-cache --stacktrace --warning-mode all
-          }
+          echo "=== Starting Enhanced Release APK Build ==="
           
-          echo "=== Verifying Release APK ==="
-          if [ -f "app/build/outputs/apk/release/app-release-unsigned.apk" ]; then
-            ls -la app/build/outputs/apk/release/
-            echo "✓ Release APK created successfully"
+          # Use same isolated environment
+          export GRADLE_USER_HOME="/tmp/gradle-build-$$"
+          export GRADLE_OPTS="-Xmx2g -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8"
+          
+          # Release build with fallback strategy
+          echo "=== Release Build Attempt ==="
+          timeout 600 ./gradlew assembleRelease \
+            --stacktrace \
+            --info \
+            --no-daemon \
+            --no-parallel \
+            --no-build-cache \
+            -Dorg.gradle.jvmargs="-Xmx2g -XX:MaxMetaspaceSize=512m" \
+            || RELEASE_BUILD_FAILED=true
+          
+          if [ "$RELEASE_BUILD_FAILED" = "true" ]; then
+            echo "=== Release build failed, skipping but continuing ==="
+            echo "✗ Release APK build failed - Debug APK is available"
           else
-            echo "✗ Release APK not found"
-            find . -name "*.apk" -type f 2>/dev/null || echo "No APK files found anywhere"
-            exit 1
+            echo "=== Release APK Build Complete ==="
+            if [ -f "app/build/outputs/apk/release/app-release-unsigned.apk" ]; then
+              echo "✓ Release APK built successfully"
+              ls -la app/build/outputs/apk/release/
+            else
+              echo "✗ Release APK not found despite successful build"
+            fi
           fi
         env:
           ANDROID_HOME: /usr/local/lib/android/sdk
         shell: bash
         continue-on-error: true
 
-      - name: Show build outputs
+      - name: 📊 Final Build Status & APK Collection
         run: |
-          echo "Looking for APKs..."
-          find . -type f -name "*.apk" -print || echo "No APKs found"
-          echo "Contents of android/app/build/outputs:"
-          ls -la android/app/build/outputs/ || echo "outputs directory not found"
-          echo "Contents of android/app/build/outputs/apk:"
-          ls -la android/app/build/outputs/apk/ || echo "apk directory not found"
+          echo "=== Final Build Status Report ==="
+          cd android
+          
+          echo "Checking for built APK files:"
+          find app/build/outputs/apk/ -name "*.apk" -type f -exec ls -la {} + 2>/dev/null || echo "No APK files found"
+          
+          echo "Debug APK status:"
+          if [ -f "app/build/outputs/apk/debug/app-debug.apk" ]; then
+            echo "✓ Debug APK: AVAILABLE"
+            stat app/build/outputs/apk/debug/app-debug.apk
+          else
+            echo "✗ Debug APK: MISSING"
+          fi
+          
+          echo "Release APK status:"
+          if [ -f "app/build/outputs/apk/release/app-release-unsigned.apk" ]; then
+            echo "✓ Release APK: AVAILABLE"
+            stat app/build/outputs/apk/release/app-release-unsigned.apk
+          else
+            echo "✗ Release APK: MISSING"
+          fi
         shell: bash
 
-      - name: Upload APK artifacts
+      - name: 📱 Upload APK Artifacts
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: tutosmart-apks
           path: |
-            android/app/build/outputs/apk/debug/*.apk
-            android/app/build/outputs/apk/release/*.apk
-          if-no-files-found: warn
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/outputs/apk/release/app-release-unsigned.apk
           retention-days: 30
 
-      - name: Upload build logs on failure
+      - name: 📄 Upload Build Logs and Diagnostics
         uses: actions/upload-artifact@v4
-        if: failure()
+        if: always()
         with:
-          name: build-logs
+          name: build-logs-and-diagnostics
           path: |
-            android/app/build/
-          if-no-files-found: ignore
+            android/app/build/reports/
+            android/build/reports/
+            android/gradle-diagnostic-*.log
+            android/capacitor-debug-*.log
           retention-days: 7

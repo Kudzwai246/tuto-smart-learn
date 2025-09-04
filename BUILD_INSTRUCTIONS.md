@@ -7,7 +7,7 @@
 - **Package ID**: com.tutosmart.learn  
 - **Target Platform**: Android
 - **Framework**: React + Capacitor
-- **Build System**: Gradle 8.2.1
+- **Build System**: Gradle 7.6.4
 
 ## Prerequisites
 
@@ -21,13 +21,14 @@
 - **Target SDK**: 34
 - **Minimum SDK**: 22  
 - **Compile SDK**: 34
-- **Build Tools**: 34.0.0 or later
+- **Build Tools**: 30.0.3 and 34.0.0
 
 ### Required Android SDK Components
 ```bash
 # Install via Android Studio SDK Manager:
 - Android SDK Platform 34
-- Android SDK Build-Tools 34.0.0
+- Android SDK Build-Tools 30.0.3
+- Android SDK Build-Tools 34.0.0  
 - Android Emulator
 - Android SDK Platform-Tools
 - Android SDK Tools
@@ -284,8 +285,9 @@ adb install android/app/build/outputs/apk/debug/app-debug.apk
 
 ## Version Information
 
-- **Gradle**: 8.2.1
-- **Android Gradle Plugin**: 8.2.1
+- **Gradle**: 7.6.4
+- **Android Gradle Plugin**: 7.4.2
+- **Build Tools**: 30.0.3 (primary), 34.0.0 (override)
 - **Capacitor**: 7.4.1
 - **Target Android Version**: 14 (API 34)
 - **Minimum Android Version**: 5.1 (API 22)
