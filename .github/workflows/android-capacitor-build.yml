@@ -65,7 +65,27 @@ jobs:
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-34"
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;34.0.0"
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools"
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "emulator"
           echo "Android SDK components installed"
+        shell: bash
+
+      - name: Verify Capacitor plugins
+        run: |
+          echo "=== Verifying Capacitor plugin resolution ==="
+          if [ -f "node_modules/@capacitor/android/package.json" ]; then
+            echo "✓ Capacitor Android found"
+            cat node_modules/@capacitor/android/package.json | grep version
+          else
+            echo "✗ Capacitor Android missing"
+          fi
+          
+          echo "=== Checking plugin directories ==="
+          ls -la node_modules/@capacitor/ || echo "No Capacitor plugins found"
+          
+          echo "=== Checking android settings.gradle includes ==="
+          if [ -f "android/settings.gradle" ]; then
+            grep -n "capacitor" android/settings.gradle || echo "No capacitor references found"
+          fi
         shell: bash
 
       - name: Add android platform & Capacitor sync
@@ -117,32 +137,55 @@ jobs:
           ls -la $ANDROID_HOME/cmdline-tools/ || echo "No cmdline tools found"
         shell: bash
 
+      - name: Pre-build validation
+        run: |
+          cd android
+          echo "=== Pre-build validation ==="
+          echo "Current directory: $(pwd)"
+          echo "Java version:"
+          java -version
+          echo "Gradle wrapper validation:"
+          ls -la gradlew gradle/wrapper/
+          echo "Build tools validation:"
+          if [ -d "$ANDROID_HOME/build-tools/34.0.0" ]; then
+            echo "✓ Build tools 34.0.0 found"
+            ls -la $ANDROID_HOME/build-tools/34.0.0/
+          else
+            echo "✗ Build tools 34.0.0 missing"
+          fi
+          echo "Platform validation:"
+          if [ -d "$ANDROID_HOME/platforms/android-34" ]; then
+            echo "✓ Android platform 34 found"
+          else
+            echo "✗ Android platform 34 missing"
+          fi
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
+        shell: bash
+
       - name: Build debug APK
         run: |
           cd android
-          echo "Starting debug build..."
-          echo "JAVA_HOME: $JAVA_HOME"
-          echo "ANDROID_HOME: $ANDROID_HOME"
-          echo "Current directory: $(pwd)"
-          echo "Checking gradle wrapper files:"
-          ls -la gradle/wrapper/
-          echo "Checking gradlew permissions:"
-          ls -la gradlew
-          echo "Java version check:"
-          java -version
-          echo "Building APK..."
+          echo "=== Starting Android debug build ==="
+          
+          # Set environment variables for build
           export JAVA_HOME=$JAVA_HOME
-          export PATH="$JAVA_HOME/bin:$PATH"
-          echo "About to run gradlew with these args: clean assembleDebug --no-daemon --stacktrace --info"
-          echo "Environment variables:"
+          export ANDROID_HOME=$ANDROID_HOME
+          export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/build-tools/34.0.0:$PATH"
+          
+          echo "Environment check:"
           echo "JAVA_HOME: $JAVA_HOME"
           echo "ANDROID_HOME: $ANDROID_HOME"
           echo "PATH: $PATH"
-          echo "Gradle wrapper content check:"
-          head -5 gradlew
-          ./gradlew --version
-          echo "Gradlew version check completed, now building..."
-          ./gradlew clean assembleDebug --no-daemon --stacktrace --info
+          
+          echo "Gradle version check:"
+          ./gradlew --version --no-daemon
+          
+          echo "Starting clean build..."
+          ./gradlew clean --no-daemon --stacktrace
+          
+          echo "Starting debug assembly..."
+          ./gradlew assembleDebug --no-daemon --stacktrace --info
         env:
           ANDROID_HOME: /usr/local/lib/android/sdk
         shell: bash
