@@ -45,10 +45,7 @@ android {
 repositories {
     google()
     mavenCentral()
-    // Keep local libs directory for any local JARs
-    flatDir {
-        dirs 'libs'
-    }
+    // flatDir removed - not needed and causes warnings
 }
 
 dependencies {
@@ -73,10 +70,25 @@ dependencies {
 
 apply from: 'capacitor.build.gradle'
 
+// Diagnostic task to print all configurations
+task printConfigs {
+    doLast {
+        println "\n=== :app Configurations ==="
+        configurations.all { config ->
+            println "  - ${config.name}"
+        }
+        println "=========================\n"
+    }
+}
+
+// Apply google-services plugin only if file exists with valid content
 try {
     def servicesJSON = file('google-services.json')
-    if (servicesJSON.text) {
+    if (servicesJSON.exists() && servicesJSON.text?.trim()) {
         apply plugin: 'com.google.gms.google-services'
+        logger.info("✓ google-services plugin applied")
+    } else {
+        logger.info("google-services.json not found or empty, skipping plugin")
     }
 } catch(Exception e) {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")

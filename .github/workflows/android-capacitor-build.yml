@@ -216,6 +216,28 @@ jobs:
           ANDROID_HOME: /usr/local/lib/android/sdk
         shell: bash
 
+      - name: 🔍 Pre-build Gradle Diagnostics
+        run: |
+          cd android
+          echo "=== Running Gradle diagnostic tasks ==="
+          
+          chmod +x gradlew
+          
+          # List all projects
+          echo "=== Available Projects ==="
+          ./gradlew projects --no-daemon || true
+          
+          # List all tasks for :app
+          echo "=== Tasks available for :app ==="
+          ./gradlew :app:tasks --all --no-daemon || true
+          
+          # Run printConfigs diagnostic task
+          echo "=== Configuration diagnostics ==="
+          ./gradlew :app:printConfigs --no-daemon || true
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
+        shell: bash
+
       - name: 🔧 Build Android APK (Debug) - Enhanced Strategy
         run: |
           cd android
@@ -234,7 +256,7 @@ jobs:
           # Make gradlew executable
           chmod +x gradlew
           
-          # Primary build attempt with comprehensive flags
+          # Primary build attempt with comprehensive flags and full logging
           echo "=== Primary Build Attempt ==="
           timeout 600 ./gradlew clean assembleDebug \
             --stacktrace \

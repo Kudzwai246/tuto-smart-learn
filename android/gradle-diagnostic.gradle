@@ -78,6 +78,35 @@ if (androidHome) {
     }
 }
 
+// Detailed subproject diagnostics - run afterEvaluate to see configurations
+gradle.projectsEvaluated {
+    println "\n" + "="*60
+    println "SUBPROJECT CONFIGURATION DIAGNOSTICS"
+    println "="*60
+    
+    rootProject.allprojects { project ->
+        println "\nProject: ${project.path}"
+        println "  Applied plugins: ${project.plugins.collect { it.class.simpleName }}"
+        
+        try {
+            def configs = project.configurations
+            println "  Configurations available: ${configs.names.toList()}"
+            
+            if (configs.names.contains('debugRuntimeClasspath')) {
+                println "  ✓ debugRuntimeClasspath exists"
+            } else {
+                println "  ✗ debugRuntimeClasspath MISSING"
+            }
+        } catch (Exception e) {
+            println "  ⚠ Could not access configurations: ${e.message}"
+        }
+    }
+    
+    println "="*60
+    println "END CONFIGURATION DIAGNOSTICS"
+    println "="*60
+}
+
 println "="*60
 println "END DIAGNOSTIC INFORMATION"
 println "="*60
