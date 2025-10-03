@@ -256,9 +256,9 @@ jobs:
           # Make gradlew executable
           chmod +x gradlew
           
-          # Primary build attempt with comprehensive flags and full logging
+          # Primary build attempt with comprehensive flags and full logging (scoped to :app)
           echo "=== Primary Build Attempt ==="
-          timeout 600 ./gradlew clean assembleDebug \
+          timeout 600 ./gradlew clean :app:assembleDebug \
             --stacktrace \
             --info \
             --no-daemon \
@@ -279,8 +279,8 @@ jobs:
             # Clean everything again
             rm -rf .gradle build app/build
             
-            # Minimal retry with different flags
-            timeout 600 ./gradlew assembleDebug \
+            # Minimal retry with different flags (scoped to :app)
+            timeout 600 ./gradlew :app:assembleDebug \
               --no-daemon \
               --offline \
               --stacktrace \
@@ -288,8 +288,8 @@ jobs:
             
             if [ "$SECOND_ATTEMPT_FAILED" = "true" ]; then
               echo "=== Both attempts failed, final diagnostic build ==="
-              ./gradlew tasks --all || true
-              ./gradlew dependencies --configuration debugRuntimeClasspath || true
+              ./gradlew :app:tasks --all || true
+              ./gradlew :app:dependencies --configuration debugRuntimeClasspath || true
               exit 1
             fi
           fi
@@ -316,9 +316,9 @@ jobs:
           export GRADLE_USER_HOME="/tmp/gradle-build-$$"
           export GRADLE_OPTS="-Xmx2g -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8"
           
-          # Release build with fallback strategy
+          # Release build with fallback strategy (scoped to :app)
           echo "=== Release Build Attempt ==="
-          timeout 600 ./gradlew assembleRelease \
+          timeout 600 ./gradlew :app:assembleRelease \
             --stacktrace \
             --info \
             --no-daemon \
