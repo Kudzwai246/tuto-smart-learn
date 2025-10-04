@@ -256,8 +256,11 @@ jobs:
           # Make gradlew executable
           chmod +x gradlew
           
-          # Primary build attempt with comprehensive flags and full logging (scoped to :app)
-          echo "=== Primary Build Attempt ==="
+          # Create logs directory
+          mkdir -p /tmp/build-logs
+          
+          # Primary build attempt with full logging captured
+          echo "=== Primary Build Attempt with Full Logging ==="
           timeout 600 ./gradlew clean :app:assembleDebug \
             --stacktrace \
             --info \
@@ -269,29 +272,23 @@ jobs:
             -Dorg.gradle.jvmargs="-Xmx2g -XX:MaxMetaspaceSize=512m" \
             -Pandroid.useAndroidX=true \
             -Pandroid.enableJetifier=true \
-            || FIRST_ATTEMPT_FAILED=true
+            2>&1 | tee /tmp/build-logs/debug-build.log || BUILD_FAILED=true
           
-          # Fallback build strategy if primary fails
-          if [ "$FIRST_ATTEMPT_FAILED" = "true" ]; then
-            echo "=== Primary attempt failed, trying fallback strategy ==="
-            sleep 10
-            
-            # Clean everything again
-            rm -rf .gradle build app/build
-            
-            # Minimal retry with different flags (scoped to :app)
-            timeout 600 ./gradlew :app:assembleDebug \
-              --no-daemon \
-              --offline \
-              --stacktrace \
-              || SECOND_ATTEMPT_FAILED=true
-            
-            if [ "$SECOND_ATTEMPT_FAILED" = "true" ]; then
-              echo "=== Both attempts failed, final diagnostic build ==="
-              ./gradlew :app:tasks --all || true
-              ./gradlew :app:dependencies --configuration debugRuntimeClasspath || true
-              exit 1
-            fi
+          if [ "$BUILD_FAILED" = "true" ]; then
+            echo ""
+            echo "=========================================="
+            echo "=== BUILD FAILED - Displaying Last 200 Lines ==="
+            echo "=========================================="
+            tail -n 200 /tmp/build-logs/debug-build.log
+            echo ""
+            echo "=========================================="
+            echo "=== Running Diagnostics ==="
+            echo "=========================================="
+            ./gradlew :app:tasks --all 2>&1 | tee /tmp/build-logs/tasks.log || true
+            ./gradlew :app:dependencies --configuration debugRuntimeClasspath 2>&1 | tee /tmp/build-logs/dependencies.log || true
+            echo ""
+            echo "Full logs saved to artifacts for review"
+            exit 1
           fi
           
           echo "=== Debug APK Build Complete ==="
@@ -316,8 +313,8 @@ jobs:
           export GRADLE_USER_HOME="/tmp/gradle-build-$$"
           export GRADLE_OPTS="-Xmx2g -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8"
           
-          # Release build with fallback strategy (scoped to :app)
-          echo "=== Release Build Attempt ==="
+          # Release build with full logging captured
+          echo "=== Release Build Attempt with Full Logging ==="
           timeout 600 ./gradlew :app:assembleRelease \
             --stacktrace \
             --info \
@@ -325,11 +322,16 @@ jobs:
             --no-parallel \
             --no-build-cache \
             -Dorg.gradle.jvmargs="-Xmx2g -XX:MaxMetaspaceSize=512m" \
-            || RELEASE_BUILD_FAILED=true
+            2>&1 | tee /tmp/build-logs/release-build.log || RELEASE_FAILED=true
           
-          if [ "$RELEASE_BUILD_FAILED" = "true" ]; then
-            echo "=== Release build failed, skipping but continuing ==="
-            echo "✗ Release APK build failed - Debug APK is available"
+          if [ "$RELEASE_FAILED" = "true" ]; then
+            echo ""
+            echo "=========================================="
+            echo "=== RELEASE BUILD FAILED - Displaying Last 200 Lines ==="
+            echo "=========================================="
+            tail -n 200 /tmp/build-logs/release-build.log
+            echo ""
+            echo "Continuing despite release build failure..."
           else
             echo "=== Release APK Build Complete ==="
             if [ -f "app/build/outputs/apk/release/app-release-unsigned.apk" ]; then
@@ -385,6 +387,7 @@ jobs:
         with:
           name: build-logs-and-diagnostics
           path: |
+            /tmp/build-logs/**/*.log
             android/app/build/reports/
             android/build/reports/
             android/gradle-diagnostic-*.log
