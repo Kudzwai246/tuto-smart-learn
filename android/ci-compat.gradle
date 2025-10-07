@@ -7,9 +7,9 @@ subprojects { proj ->
         try {
             if ((proj.plugins.hasPlugin('com.android.application') || proj.plugins.hasPlugin('com.android.library'))) {
                 if (proj.hasProperty('android')) {
-                    proj.android.compileSdk = 34
+                    proj.android.compileSdk = 35
                     if (proj.android.defaultConfig != null) {
-                        proj.android.defaultConfig.targetSdk = 34
+                        proj.android.defaultConfig.targetSdk = 35
                     }
                     proj.android.compileOptions {
                         sourceCompatibility JavaVersion.VERSION_17
