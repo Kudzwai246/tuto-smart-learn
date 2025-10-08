@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import TutoLogo from './TutoLogo';
 import { PAYMENT_METHODS } from '@/types';
 import { ProfileManagement } from './ProfileManagement';
+import { TutoLibrary } from './library/TutoLibrary';
 import { TeacherRatingForm } from './TeacherRatingForm';
 import { TeacherProfileEnhanced } from './TeacherProfileEnhanced';
 
@@ -179,11 +180,20 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ onSignOut }) => {
         {/* Main Tabs */}
         <Tabs defaultValue="subscriptions" className="space-y-6">
           <TabsList>
+            <TabsTrigger value="library">Tuto Library</TabsTrigger>
             <TabsTrigger value="subscriptions">My Subscriptions</TabsTrigger>
             <TabsTrigger value="teachers">Find Teachers</TabsTrigger>
             <TabsTrigger value="payments">Payments</TabsTrigger>
             <TabsTrigger value="profile">Profile</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="library">
+            <TutoLibrary 
+              userType="student" 
+              userId={profile?.id || ''} 
+              hasActiveSubscription={activeSubscriptions.length > 0}
+            />
+          </TabsContent>
 
           <TabsContent value="subscriptions">
             <Card>

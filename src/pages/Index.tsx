@@ -33,51 +33,65 @@ const Index = () => {
   const [session, setSession] = useState<Session | null>(null);
 
   useEffect(() => {
-    // Check for existing session
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setSession(session);
-        setUser(session.user);
-        
-        // Get user profile to determine state
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('user_type')
-          .eq('id', session.user.id)
-          .single();
-        
-        if (profile) {
-          handleUserAuthenticated(session.user, profile.user_type);
-        }
-      }
-    };
+    let mounted = true;
 
-    checkSession();
-
-    // Listen for auth changes
+    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
+        if (!mounted) return;
+        
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('user_type')
-            .eq('id', session.user.id)
-            .single();
-          
-          if (profile) {
-            handleUserAuthenticated(session.user, profile.user_type);
-          }
+          // Defer profile fetch to avoid race conditions
+          setTimeout(async () => {
+            if (!mounted) return;
+            
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('user_type')
+              .eq('id', session.user.id)
+              .single();
+            
+            if (profile && mounted) {
+              handleUserAuthenticated(session.user, profile.user_type);
+            }
+          }, 0);
         } else {
           setAppState('welcome');
         }
       }
     );
 
-    return () => subscription.unsubscribe();
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return;
+      
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        setTimeout(async () => {
+          if (!mounted) return;
+          
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('user_type')
+            .eq('id', session.user.id)
+            .single();
+          
+          if (profile && mounted) {
+            handleUserAuthenticated(session.user, profile.user_type);
+          }
+        }, 0);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleUserAuthenticated = async (authenticatedUser: User, type: string) => {
@@ -122,12 +136,18 @@ const Index = () => {
     }
   };
 
-  const handleSignOut = () => {
-    setUser(null);
-    setUserType('');
-    setSession(null);
-    setAppState('welcome');
-    toast.success('Signed out successfully');
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      setUserType('');
+      setSession(null);
+      setAppState('welcome');
+      toast.success('Signed out successfully');
+    } catch (error) {
+      console.error('Sign out error:', error);
+      toast.error('Failed to sign out');
+    }
   };
 
   // Render based on current state

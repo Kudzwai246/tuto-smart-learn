@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import TutoLogo from './TutoLogo';
 import TeacherEarningsCalculator from './TeacherEarningsCalculator';
 import { ProfileManagement } from './ProfileManagement';
+import { TutoLibrary } from './library/TutoLibrary';
 import { TeacherQualificationForm } from './TeacherQualificationForm';
 
 interface TeacherDashboardProps {
@@ -149,11 +150,19 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onSignOut }) => {
         <Tabs defaultValue="students" className="space-y-6">
           <TabsList>
             <TabsTrigger value="students">My Students</TabsTrigger>
-            <TabsTrigger value="schedule">Schedule</TabsTrigger>
-            <TabsTrigger value="earnings">Earnings Calculator</TabsTrigger>
+            <TabsTrigger value="library">Tuto Library</TabsTrigger>
+            <TabsTrigger value="earnings">Earnings</TabsTrigger>
             <TabsTrigger value="qualifications">Qualifications</TabsTrigger>
             <TabsTrigger value="profile">Profile</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="library">
+            <TutoLibrary 
+              userType="teacher" 
+              userId={profile?.id || ''} 
+              hasActiveSubscription={true}
+            />
+          </TabsContent>
 
           <TabsContent value="students">
             <Card>

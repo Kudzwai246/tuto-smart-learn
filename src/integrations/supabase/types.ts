@@ -14,6 +14,177 @@ export type Database = {
   }
   public: {
     Tables: {
+      content_earnings: {
+        Row: {
+          content_id: string
+          content_type: string
+          created_at: string
+          creator_id: string
+          id: string
+          last_calculated_at: string | null
+          total_earnings_usd: number | null
+          total_views: number | null
+          updated_at: string
+        }
+        Insert: {
+          content_id: string
+          content_type: string
+          created_at?: string
+          creator_id: string
+          id?: string
+          last_calculated_at?: string | null
+          total_earnings_usd?: number | null
+          total_views?: number | null
+          updated_at?: string
+        }
+        Update: {
+          content_id?: string
+          content_type?: string
+          created_at?: string
+          creator_id?: string
+          id?: string
+          last_calculated_at?: string | null
+          total_earnings_usd?: number | null
+          total_views?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      library_notes: {
+        Row: {
+          created_at: string
+          description: string | null
+          download_count: number | null
+          education_level: string
+          file_path: string
+          file_size_bytes: number | null
+          file_type: string
+          form: string | null
+          id: string
+          status: string | null
+          subject: string
+          title: string
+          updated_at: string
+          uploader_id: string
+          view_count: number | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          download_count?: number | null
+          education_level: string
+          file_path: string
+          file_size_bytes?: number | null
+          file_type: string
+          form?: string | null
+          id?: string
+          status?: string | null
+          subject: string
+          title: string
+          updated_at?: string
+          uploader_id: string
+          view_count?: number | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          download_count?: number | null
+          education_level?: string
+          file_path?: string
+          file_size_bytes?: number | null
+          file_type?: string
+          form?: string | null
+          id?: string
+          status?: string | null
+          subject?: string
+          title?: string
+          updated_at?: string
+          uploader_id?: string
+          view_count?: number | null
+        }
+        Relationships: []
+      }
+      library_videos: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration_seconds: number | null
+          education_level: string
+          file_path: string
+          file_size_bytes: number | null
+          form: string | null
+          id: string
+          status: string | null
+          subject: string
+          thumbnail_path: string | null
+          title: string
+          updated_at: string
+          uploader_id: string
+          view_count: number | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration_seconds?: number | null
+          education_level: string
+          file_path: string
+          file_size_bytes?: number | null
+          form?: string | null
+          id?: string
+          status?: string | null
+          subject: string
+          thumbnail_path?: string | null
+          title: string
+          updated_at?: string
+          uploader_id: string
+          view_count?: number | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration_seconds?: number | null
+          education_level?: string
+          file_path?: string
+          file_size_bytes?: number | null
+          form?: string | null
+          id?: string
+          status?: string | null
+          subject?: string
+          thumbnail_path?: string | null
+          title?: string
+          updated_at?: string
+          uploader_id?: string
+          view_count?: number | null
+        }
+        Relationships: []
+      }
+      library_views: {
+        Row: {
+          content_id: string
+          content_type: string
+          created_at: string
+          id: string
+          view_duration_seconds: number | null
+          viewer_id: string
+        }
+        Insert: {
+          content_id: string
+          content_type: string
+          created_at?: string
+          id?: string
+          view_duration_seconds?: number | null
+          viewer_id: string
+        }
+        Update: {
+          content_id?: string
+          content_type?: string
+          created_at?: string
+          id?: string
+          view_duration_seconds?: number | null
+          viewer_id?: string
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount_usd: number
@@ -433,6 +604,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_note_earnings: {
+        Args: { _creator_id: string; _note_id: string }
+        Returns: number
+      }
+      calculate_video_earnings: {
+        Args: { _creator_id: string; _video_id: string }
+        Returns: number
+      }
+      get_creator_total_earnings: {
+        Args: { _creator_id: string }
+        Returns: {
+          note_count: number
+          total_earnings: number
+          total_note_earnings: number
+          total_video_earnings: number
+          total_views: number
+          video_count: number
+        }[]
+      }
       get_teacher_income_projection: {
         Args: { _teacher_id: string }
         Returns: {
