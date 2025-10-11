@@ -21,28 +21,37 @@ const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess }) => {
   const [session, setSession] = useState<Session | null>(null);
 
   useEffect(() => {
-    // Set up auth state listener
+    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
+        // Only synchronous state updates here to prevent deadlocks
         setSession(session);
         setUser(session?.user ?? null);
         
+        // Defer async profile fetching to prevent blocking
         if (session?.user) {
-          // Get user profile to determine user type
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('user_type')
-            .eq('id', session.user.id)
-            .single();
-          
-          if (profile) {
-            onAuthSuccess(session.user, profile.user_type);
-          }
+          const userId = session.user.id;
+          setTimeout(async () => {
+            try {
+              const { data: profile } = await supabase
+                .from('profiles')
+                .select('user_type')
+                .eq('id', userId)
+                .maybeSingle();
+              
+              if (profile && session.user) {
+                onAuthSuccess(session.user, profile.user_type);
+              }
+            } catch (error) {
+              console.error('Error fetching profile:', error);
+              toast.error('Failed to load user profile');
+            }
+          }, 0);
         }
       }
     );
 
-    // Check for existing session
+    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);

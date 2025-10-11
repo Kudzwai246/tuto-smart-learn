@@ -35,14 +35,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSignOut }) => {
 
   const fetchDashboardData = async () => {
     try {
-      // Get current user
+      // Get current user and verify admin role
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        // Check if user has admin role
+        const { data: isAdmin } = await supabase.rpc('is_admin', { _uid: user.id });
+        
+        if (!isAdmin) {
+          toast.error('Unauthorized: Admin access required');
+          onSignOut();
+          return;
+        }
+
         const { data: adminProfile } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
         setCurrentAdmin(adminProfile);
       }
 
