@@ -191,7 +191,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ onSignOut }) => {
             <TutoLibrary 
               userType="student" 
               userId={profile?.id || ''} 
-              hasActiveSubscription={activeSubscriptions.length > 0}
+              hasActiveSubscription={subscriptions.filter(s => s.status === 'active').length > 0}
             />
           </TabsContent>
 
