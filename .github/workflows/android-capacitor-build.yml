@@ -288,7 +288,16 @@ jobs:
             ./gradlew :app:dependencies --configuration debugRuntimeClasspath 2>&1 | tee /tmp/build-logs/dependencies.log || true
             echo ""
             echo "Full logs saved to artifacts for review"
+          fi
+          
+          # Check if APK was actually built
+          if [ ! -f "app/build/outputs/apk/debug/app-debug.apk" ]; then
+            echo "❌ ERROR: Debug APK was not created!"
             exit 1
+          fi
+          
+          echo "✅ Debug APK built successfully"
+          ls -lh app/build/outputs/apk/debug/app-debug.apk
           fi
           
           echo "=== Debug APK Build Complete ==="
@@ -354,20 +363,39 @@ jobs:
           echo "Checking for built APK files:"
           find app/build/outputs/apk/ -name "*.apk" -type f -exec ls -la {} + 2>/dev/null || echo "No APK files found"
           
+          echo ""
+          echo "=========================================="
           echo "Debug APK status:"
           if [ -f "app/build/outputs/apk/debug/app-debug.apk" ]; then
-            echo "✓ Debug APK: AVAILABLE"
+            echo "✅ Debug APK: AVAILABLE"
             stat app/build/outputs/apk/debug/app-debug.apk
+            md5sum app/build/outputs/apk/debug/app-debug.apk || true
+            DEBUG_SUCCESS=true
           else
-            echo "✗ Debug APK: MISSING"
+            echo "❌ Debug APK: MISSING"
+            DEBUG_SUCCESS=false
           fi
           
+          echo ""
           echo "Release APK status:"
           if [ -f "app/build/outputs/apk/release/app-release-unsigned.apk" ]; then
-            echo "✓ Release APK: AVAILABLE"
+            echo "✅ Release APK: AVAILABLE"
             stat app/build/outputs/apk/release/app-release-unsigned.apk
+            md5sum app/build/outputs/apk/release/app-release-unsigned.apk || true
           else
-            echo "✗ Release APK: MISSING"
+            echo "⚠️ Release APK: MISSING (optional)"
+          fi
+          
+          echo ""
+          echo "=========================================="
+          if [ "$DEBUG_SUCCESS" = "true" ]; then
+            echo "🎉 BUILD SUCCESSFUL! Debug APK is ready."
+            echo "=========================================="
+            exit 0
+          else
+            echo "❌ BUILD FAILED! Debug APK was not created."
+            echo "=========================================="
+            exit 1
           fi
         shell: bash
 
