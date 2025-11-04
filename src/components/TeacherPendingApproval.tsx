@@ -47,7 +47,11 @@ const TeacherPendingApproval: React.FC<TeacherPendingApprovalProps> = ({ onBackT
                 </div>
                 <div className="flex items-start space-x-3">
                   <div className="w-2 h-2 bg-yellow-400 rounded-full mt-2"></div>
-                  <p>You'll receive an email within 3-5 business days</p>
+                  <p>You'll receive an email with our decision <strong>within 48 hours</strong></p>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-yellow-400 rounded-full mt-2"></div>
+                  <p>Check your email inbox (and spam folder) for updates</p>
                 </div>
               </div>
             </div>

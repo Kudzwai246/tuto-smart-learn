@@ -114,7 +114,14 @@ const TeacherApplication: React.FC<TeacherApplicationProps> = ({ onBack, onAppli
         return;
       }
 
-      const { error } = await supabase
+      // Get user profile for name
+      const { data: userProfile } = await supabase
+        .from('profiles')
+        .select('full_name, email')
+        .eq('id', user.id)
+        .single();
+
+      const { data: insertedTeacher, error } = await supabase
         .from('teachers')
         .insert({
           id: user.id,
@@ -127,11 +134,37 @@ const TeacherApplication: React.FC<TeacherApplicationProps> = ({ onBack, onAppli
           lesson_location: formData.lessonLocation,
           business_lat: formData.businessLat,
           business_lng: formData.businessLng,
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
       
-      toast.success('Teacher application submitted successfully!');
+      // Send application submitted email
+      try {
+        await supabase.functions.invoke('send-notifications', {
+          body: {
+            notificationData: {
+              recipientEmail: userProfile?.email || user.email,
+              recipientName: userProfile?.full_name || 'Teacher',
+              notificationType: 'application_submitted',
+              title: 'Application Received - Under Review (48 Hours)',
+              message: 'Thank you for applying to become a Tuto teacher! Your application has been successfully received and is now under review.',
+              additionalData: {
+                applicationId: insertedTeacher?.id,
+                subjects: validSubjects,
+                city: formData.locationCity,
+                experience: formData.experienceYears
+              }
+            }
+          }
+        });
+      } catch (emailError) {
+        console.error('Failed to send confirmation email:', emailError);
+        // Don't block the application if email fails
+      }
+      
+      toast.success('Teacher application submitted successfully! Check your email for confirmation.');
       onApplicationSubmitted();
     } catch (error) {
       console.error('Application error:', error);

@@ -106,6 +106,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSignOut }) => {
 
   const handleTeacherStatusUpdate = async (teacherId: string, newStatus: string) => {
     try {
+      // Get teacher data before updating
+      const { data: teacherData, error: fetchError } = await supabase
+        .from('teachers')
+        .select(`
+          *,
+          profiles!inner(full_name, email)
+        `)
+        .eq('id', teacherId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
       const { error } = await supabase
         .from('teachers')
         .update({ 
@@ -116,7 +128,38 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSignOut }) => {
 
       if (error) throw error;
 
-      toast.success(`Teacher ${newStatus} successfully`);
+      // Send email notification
+      try {
+        await supabase.functions.invoke('send-notifications', {
+          body: {
+            notificationData: {
+              recipientEmail: teacherData.profiles.email,
+              recipientName: teacherData.profiles.full_name,
+              notificationType: newStatus === 'approved' ? 'account_approved' : 'account_rejected',
+              title: newStatus === 'approved' 
+                ? 'Welcome Aboard! Your Tuto Teacher Account is Approved 🎉'
+                : 'Teacher Application Status Update',
+              message: newStatus === 'approved'
+                ? 'Congratulations! Your application has been approved!'
+                : 'Thank you for your interest in becoming a Tuto teacher.',
+              additionalData: {
+                fullName: teacherData.profiles.full_name,
+                subjects: teacherData.subjects,
+                city: teacherData.location_city,
+                experience: teacherData.experience_years,
+                rejectionReason: newStatus === 'rejected' 
+                  ? 'Please contact support@tuto.co.zw for more information about your application.'
+                  : undefined
+              }
+            }
+          }
+        });
+      } catch (emailError) {
+        console.error('Failed to send notification email:', emailError);
+        // Don't block the status update if email fails
+      }
+
+      toast.success(`Teacher ${newStatus} successfully${newStatus === 'approved' ? ' - Welcome email sent!' : ''}`);
       fetchDashboardData();
     } catch (error) {
       console.error('Error updating teacher status:', error);
