@@ -44,16 +44,16 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen gradient-bg flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md space-y-8 animate-fade-in">
         {/* Logo and Header */}
         <div className="text-center space-y-4">
           <TutoLogo size="lg" className="justify-center" />
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            <h1 className="text-3xl font-bold mb-2">
               Welcome to Tuto
             </h1>
-            <p className="text-gray-600 text-lg">
+            <p className="text-muted-foreground text-lg">
               Quality education at affordable prices
             </p>
           </div>
@@ -62,15 +62,15 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
         {/* Features Grid */}
         <div className="grid grid-cols-2 gap-4">
           {features.map((feature, index) => (
-            <Card key={index} className="border-none shadow-md hover:shadow-lg transition-shadow duration-300">
+            <Card key={index} className="border-border shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105">
               <CardContent className="p-4 text-center space-y-2">
                 <div className="flex justify-center">
                   {feature.icon}
                 </div>
-                <h3 className="font-semibold text-sm text-gray-900">
+                <h3 className="font-semibold text-sm">
                   {feature.title}
                 </h3>
-                <p className="text-xs text-gray-600">
+                <p className="text-xs text-muted-foreground">
                   {feature.description}
                 </p>
               </CardContent>
@@ -79,12 +79,12 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
         </div>
 
         {/* Pricing Highlight */}
-        <Card className="bg-primary text-white border-none shadow-lg">
+        <Card className="gradient-primary text-primary-foreground border-none shadow-lg">
           <CardContent className="p-6 text-center">
             <h3 className="text-xl font-bold mb-2">
               Starting from $7/month
             </h3>
-            <p className="text-orange-100">
+            <p className="opacity-90">
               Group lessons for O-level subjects
             </p>
           </CardContent>
@@ -93,13 +93,13 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
         {/* Get Started Button */}
         <Button 
           onClick={onGetStarted}
-          className="w-full bg-primary hover:bg-orange-600 text-white py-6 text-lg font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300"
+          className="w-full gradient-primary py-6 text-lg font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
         >
           Get Started
         </Button>
 
         {/* Footer */}
-        <p className="text-center text-sm text-gray-500">
+        <p className="text-center text-sm text-muted-foreground">
           Revolutionizing education in Zimbabwe
         </p>
       </div>

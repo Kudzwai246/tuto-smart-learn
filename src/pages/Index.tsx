@@ -11,8 +11,7 @@ import AuthPage from '@/components/AuthPage';
 import StudentRegistration from '@/components/StudentRegistration';
 import TeacherApplication from '@/components/TeacherApplication';
 import TeacherPendingApproval from '@/components/TeacherPendingApproval';
-import StudentDashboard from '@/components/StudentDashboard';
-import TeacherDashboard from '@/components/TeacherDashboard';
+import DashboardWithNav from '@/components/DashboardWithNav';
 import AdminDashboard from '@/components/AdminDashboard';
 
 type AppState = 
@@ -194,10 +193,23 @@ const Index = () => {
       );
     
     case 'student-dashboard':
-      return <StudentDashboard onSignOut={handleSignOut} />;
+      return (
+        <DashboardWithNav
+          userId={user?.id || ''}
+          userType="student"
+          onSignOut={handleSignOut}
+          hasActiveSubscription={true}
+        />
+      );
     
     case 'teacher-dashboard':
-      return <TeacherDashboard onSignOut={handleSignOut} />;
+      return (
+        <DashboardWithNav
+          userId={user?.id || ''}
+          userType="teacher"
+          onSignOut={handleSignOut}
+        />
+      );
     
     case 'admin-dashboard':
       return <AdminDashboard onSignOut={handleSignOut} />;
