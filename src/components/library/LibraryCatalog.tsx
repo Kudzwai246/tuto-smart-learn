@@ -150,12 +150,46 @@ export const LibraryCatalog: React.FC<LibraryCatalogProps> = ({
       {/* Content Grid */}
       {loading ? (
         <div className="text-center py-12">
-          <p className="text-muted-foreground">Loading...</p>
+          <div className="flex flex-col items-center gap-4">
+            <div className="loading-skeleton w-16 h-16 rounded-full" />
+            <p className="text-muted-foreground">Loading {contentType}s...</p>
+          </div>
         </div>
       ) : filteredContent.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">No {contentType}s found</p>
-        </div>
+        <Card className="glass border-border/50 backdrop-blur-lg">
+          <CardContent className="p-12 text-center">
+            <div className="flex flex-col items-center gap-4">
+              <div className="p-4 rounded-full bg-primary/10">
+                {contentType === 'video' ? (
+                  <Play className="w-12 h-12 text-primary" />
+                ) : (
+                  <Download className="w-12 h-12 text-primary" />
+                )}
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold">No {contentType}s available yet</h3>
+                <p className="text-muted-foreground max-w-md">
+                  {searchTerm || filterForm !== 'all' || filterSubject !== 'all' 
+                    ? `No ${contentType}s match your search criteria. Try adjusting your filters.`
+                    : `We're building our library! Check back soon for quality ${contentType}s.`
+                  }
+                </p>
+              </div>
+              {(searchTerm || filterForm !== 'all' || filterSubject !== 'all') && (
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setSearchTerm('');
+                    setFilterForm('all');
+                    setFilterSubject('all');
+                  }}
+                >
+                  Clear Filters
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredContent.map((item) => (

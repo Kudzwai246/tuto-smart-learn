@@ -19,9 +19,13 @@ interface Profile {
 
 interface ProfileManagementProps {
   userId: string;
+  onShowSettings?: () => void;
 }
 
-export const ProfileManagement: React.FC<ProfileManagementProps> = ({ userId }) => {
+export const ProfileManagement: React.FC<ProfileManagementProps> = ({ 
+  userId,
+  onShowSettings 
+}) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -101,10 +105,23 @@ export const ProfileManagement: React.FC<ProfileManagementProps> = ({ userId }) 
   return (
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Settings className="h-5 w-5" />
-          Profile Management
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <User className="h-5 w-5" />
+            Profile Management
+          </CardTitle>
+          {onShowSettings && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onShowSettings}
+              className="gap-2"
+            >
+              <Settings className="h-4 w-4" />
+              Settings
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Avatar Upload */}

@@ -4,6 +4,9 @@ import FeedScreen from '@/components/feed/FeedScreen';
 import MessagesScreen from '@/components/messages/MessagesScreen';
 import { TutoLibrary } from '@/components/library/TutoLibrary';
 import { ProfileManagement } from '@/components/ProfileManagement';
+import SettingsScreen from '@/components/SettingsScreen';
+import DiscoverTeachersScreen from '@/components/DiscoverTeachersScreen';
+import StudentProfileView from '@/components/StudentProfileView';
 
 interface DashboardWithNavProps {
   userId: string;
@@ -12,6 +15,8 @@ interface DashboardWithNavProps {
   hasActiveSubscription?: boolean;
 }
 
+type ViewType = 'main' | 'settings' | 'discover-teachers' | 'student-profile';
+
 const DashboardWithNav: React.FC<DashboardWithNavProps> = ({
   userId,
   userType,
@@ -19,11 +24,71 @@ const DashboardWithNav: React.FC<DashboardWithNavProps> = ({
   hasActiveSubscription = false,
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('feed');
+  const [currentView, setCurrentView] = useState<ViewType>('main');
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+
+  const handleShowSettings = () => setCurrentView('settings');
+  const handleShowDiscoverTeachers = () => setCurrentView('discover-teachers');
+  const handleShowStudentProfile = (studentId: string) => {
+    setSelectedStudentId(studentId);
+    setCurrentView('student-profile');
+  };
+  const handleBackToMain = () => {
+    setCurrentView('main');
+    setSelectedStudentId(null);
+  };
+
+  const handleMessageTeacher = (teacherId: string) => {
+    // Navigate to messages and create conversation
+    setActiveTab('messages');
+    handleBackToMain();
+    // TODO: Open conversation with teacher
+  };
+
+  const handleMessageStudent = (studentId: string) => {
+    // Navigate to messages and create conversation
+    setActiveTab('messages');
+    handleBackToMain();
+    // TODO: Open conversation with student
+  };
+
+  // Special views (no bottom nav)
+  if (currentView === 'settings') {
+    return <SettingsScreen onBack={handleBackToMain} onSignOut={onSignOut} />;
+  }
+
+  if (currentView === 'discover-teachers') {
+    return (
+      <DiscoverTeachersScreen
+        userId={userId}
+        onBack={handleBackToMain}
+        onMessageTeacher={handleMessageTeacher}
+      />
+    );
+  }
+
+  if (currentView === 'student-profile' && selectedStudentId) {
+    return (
+      <StudentProfileView
+        studentId={selectedStudentId}
+        currentUserId={userId}
+        onBack={handleBackToMain}
+        onMessage={handleMessageStudent}
+      />
+    );
+  }
 
   const renderContent = () => {
     switch (activeTab) {
       case 'feed':
-        return <FeedScreen userId={userId} userType={userType} />;
+        return (
+          <FeedScreen
+            userId={userId}
+            userType={userType}
+            onShowDiscoverTeachers={userType === 'student' ? handleShowDiscoverTeachers : undefined}
+            onShowStudentProfile={handleShowStudentProfile}
+          />
+        );
       case 'library':
         return (
           <TutoLibrary
@@ -37,7 +102,10 @@ const DashboardWithNav: React.FC<DashboardWithNavProps> = ({
       case 'profile':
         return (
           <div className="pb-20">
-            <ProfileManagement userId={userId} />
+            <ProfileManagement
+              userId={userId}
+              onShowSettings={handleShowSettings}
+            />
           </div>
         );
       default:

@@ -12,9 +12,16 @@ import { toast } from 'sonner';
 interface FeedScreenProps {
   userId: string;
   userType: string;
+  onShowDiscoverTeachers?: () => void;
+  onShowStudentProfile?: (studentId: string) => void;
 }
 
-const FeedScreen: React.FC<FeedScreenProps> = ({ userId, userType }) => {
+const FeedScreen: React.FC<FeedScreenProps> = ({ 
+  userId, 
+  userType,
+  onShowDiscoverTeachers,
+  onShowStudentProfile 
+}) => {
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreatePost, setShowCreatePost] = useState(false);
