@@ -174,26 +174,31 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSignOut }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <TutoLogo size="lg" className="justify-center mb-4" />
-          <p>Loading admin dashboard...</p>
+      <div className="min-h-screen gradient-bg flex items-center justify-center">
+        <div className="text-center animate-fade-in">
+          <div className="relative inline-block mb-4">
+            <div className="absolute inset-0 blur-xl bg-primary/30 rounded-full animate-pulse" />
+            <TutoLogo size="lg" className="relative justify-center" />
+          </div>
+          <p className="text-muted-foreground">Loading admin dashboard...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
+    <div className="min-h-screen gradient-bg">
+      {/* Modern Header with Glass Effect */}
+      <div className="glass border-b border-border/50 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-4">
               <TutoLogo size="sm" />
               <div>
-                <h1 className="text-xl font-semibold text-gray-900">Admin Dashboard</h1>
-                <p className="text-sm text-gray-500">
+                <h1 className="text-xl font-semibold bg-gradient-to-r from-primary to-primary-dark bg-clip-text text-transparent">
+                  Admin Dashboard
+                </h1>
+                <p className="text-sm text-muted-foreground">
                   {currentAdmin?.email === 'luckilyimat@gmail.com' 
                     ? 'Kudzwai Madyavanhu - CEO & Co-Founder'
                     : currentAdmin?.email === 'chiwandiretakunda75@gmail.com'
@@ -203,7 +208,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSignOut }) => {
                 </p>
               </div>
             </div>
-            <Button variant="outline" onClick={handleSignOut}>
+            <Button 
+              variant="outline" 
+              onClick={handleSignOut}
+              className="border-primary/50 hover:bg-primary/10"
+            >
               <LogOut className="w-4 h-4 mr-2" />
               Sign Out
             </Button>
@@ -212,84 +221,105 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSignOut }) => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Cards */}
+        {/* Modern Stats Cards with Blue Accents */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-          <Card>
+          <Card className="glass border-border/50 backdrop-blur-lg shadow-lg hover:shadow-xl hover:shadow-primary/20 transition-all">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Students</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <div className="p-2 rounded-full bg-primary/10">
+                <Users className="h-4 w-4 text-primary" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.totalStudents}</div>
+              <div className="text-2xl font-bold text-primary">{stats.totalStudents}</div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="glass border-border/50 backdrop-blur-lg shadow-lg hover:shadow-xl hover:shadow-primary/20 transition-all">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Teachers</CardTitle>
-              <GraduationCap className="h-4 w-4 text-muted-foreground" />
+              <div className="p-2 rounded-full bg-primary/10">
+                <GraduationCap className="h-4 w-4 text-primary" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.totalTeachers}</div>
+              <div className="text-2xl font-bold text-primary">{stats.totalTeachers}</div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="glass border-border/50 backdrop-blur-lg shadow-lg hover:shadow-xl hover:shadow-warning/20 transition-all">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Pending Approvals</CardTitle>
-              <Eye className="h-4 w-4 text-muted-foreground" />
+              <div className="p-2 rounded-full bg-warning/10">
+                <Eye className="h-4 w-4 text-warning" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-orange-600">{stats.pendingTeachers}</div>
+              <div className="text-2xl font-bold text-warning">{stats.pendingTeachers}</div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="glass border-border/50 backdrop-blur-lg shadow-lg hover:shadow-xl hover:shadow-success/20 transition-all">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Active Subscriptions</CardTitle>
-              <BookOpen className="h-4 w-4 text-muted-foreground" />
+              <div className="p-2 rounded-full bg-success/10">
+                <BookOpen className="h-4 w-4 text-success" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.activeSubscriptions}</div>
+              <div className="text-2xl font-bold text-success">{stats.activeSubscriptions}</div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="glass border-border/50 backdrop-blur-lg shadow-lg hover:shadow-xl hover:shadow-primary/20 transition-all">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+              <div className="p-2 rounded-full bg-primary/10">
+                <DollarSign className="h-4 w-4 text-primary" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${stats.totalRevenue.toFixed(2)}</div>
+              <div className="text-2xl font-bold text-primary">${stats.totalRevenue.toFixed(2)}</div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Main Content */}
+        {/* Modern Main Content with Glass Effect */}
         <Tabs defaultValue="teachers" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="teachers">Teachers</TabsTrigger>
-            <TabsTrigger value="students">Students</TabsTrigger>
-            <TabsTrigger value="subscriptions">Subscriptions</TabsTrigger>
-            <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsList className="glass border-border/50 backdrop-blur-lg p-1">
+            <TabsTrigger value="teachers" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground">
+              Teachers
+            </TabsTrigger>
+            <TabsTrigger value="students" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground">
+              Students
+            </TabsTrigger>
+            <TabsTrigger value="subscriptions" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground">
+              Subscriptions
+            </TabsTrigger>
+            <TabsTrigger value="profile" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground">
+              Profile
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="teachers">
-            <Card>
+          <TabsContent value="teachers" className="animate-fade-in">
+            <Card className="glass border-border/50 backdrop-blur-lg shadow-xl">
               <CardHeader>
-                <CardTitle>Teacher Management</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <GraduationCap className="w-5 h-5 text-primary" />
+                  Teacher Management
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {teachers.map((teacher) => (
-                    <div key={teacher.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div key={teacher.id} className="flex items-center justify-between p-4 border border-border/50 rounded-lg hover:border-primary/50 transition-colors bg-card/50">
                       <div className="flex-1">
                         <h3 className="font-semibold">{teacher.profiles.full_name}</h3>
-                        <p className="text-sm text-gray-600">{teacher.profiles.email}</p>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-muted-foreground">{teacher.profiles.email}</p>
+                        <p className="text-sm text-muted-foreground">
                           {teacher.subjects.join(', ')} • {teacher.experience_years} years experience
                         </p>
-                        <p className="text-sm text-gray-500">{teacher.location_city}</p>
+                        <p className="text-sm text-muted-foreground">{teacher.location_city}</p>
                       </div>
                       <div className="flex items-center space-x-2">
                         <Badge variant={
@@ -303,6 +333,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSignOut }) => {
                           <div className="flex space-x-2">
                             <Button 
                               size="sm"
+                              className="gradient-primary"
                               onClick={() => handleTeacherStatusUpdate(teacher.id, 'approved')}
                             >
                               Approve
@@ -324,22 +355,25 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSignOut }) => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="students">
-            <Card>
+          <TabsContent value="students" className="animate-fade-in">
+            <Card className="glass border-border/50 backdrop-blur-lg shadow-xl">
               <CardHeader>
-                <CardTitle>Student Overview</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="w-5 h-5 text-primary" />
+                  Student Overview
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {students.map((student) => (
-                    <div key={student.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div key={student.id} className="flex items-center justify-between p-4 border border-border/50 rounded-lg hover:border-primary/50 transition-colors bg-card/50">
                       <div className="flex-1">
                         <h3 className="font-semibold">{student.profiles.full_name}</h3>
-                        <p className="text-sm text-gray-600">{student.profiles.email}</p>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-muted-foreground">{student.profiles.email}</p>
+                        <p className="text-sm text-muted-foreground">
                           {student.education_level.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())} • {student.preferred_lesson_type}
                         </p>
-                        <p className="text-sm text-gray-500">Guardian: {student.guardian_name} ({student.guardian_email})</p>
+                        <p className="text-sm text-muted-foreground">Guardian: {student.guardian_name} ({student.guardian_email})</p>
                       </div>
                       <Badge variant={student.status === 'active' ? 'default' : 'secondary'}>
                         {student.status}
@@ -351,22 +385,25 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSignOut }) => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="subscriptions">
-            <Card>
+          <TabsContent value="subscriptions" className="animate-fade-in">
+            <Card className="glass border-border/50 backdrop-blur-lg shadow-xl">
               <CardHeader>
-                <CardTitle>Subscription Management</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-primary" />
+                  Subscription Management
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {subscriptions.map((subscription) => (
-                    <div key={subscription.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div key={subscription.id} className="flex items-center justify-between p-4 border border-border/50 rounded-lg hover:border-primary/50 transition-colors bg-card/50">
                       <div className="flex-1">
                         <h3 className="font-semibold">{subscription.subject}</h3>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-muted-foreground">
                           Student: {subscription.students.profiles.full_name} • 
                           Teacher: {subscription.teachers.profiles.full_name}
                         </p>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-muted-foreground">
                           {subscription.education_level.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())} • 
                           {subscription.lesson_type} • ${subscription.price_usd}/{subscription.duration}
                         </p>
@@ -384,7 +421,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSignOut }) => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="profile">
+          <TabsContent value="profile" className="animate-fade-in">
             {currentAdmin && <ProfileManagement userId={currentAdmin.id} />}
           </TabsContent>
         </Tabs>

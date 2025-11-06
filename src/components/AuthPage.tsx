@@ -124,89 +124,118 @@ const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-6">
+    <div className="min-h-screen relative overflow-hidden flex flex-col items-center justify-center p-4">
+      {/* Animated Blue Gradient Background */}
+      <div className="absolute inset-0 gradient-bg" />
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-primary-dark/20 animate-shimmer" style={{ backgroundSize: '200% 200%' }} />
+      
+      <div className="relative w-full max-w-md space-y-6 animate-fade-in">
         <div className="text-center">
-          <TutoLogo size="lg" className="justify-center mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900">Welcome to Tuto</h1>
-          <p className="text-gray-600">Quality education at affordable prices</p>
+          <div className="relative inline-block mb-4">
+            <div className="absolute inset-0 blur-xl bg-primary/30 rounded-full animate-pulse" />
+            <TutoLogo size="lg" className="relative justify-center" />
+          </div>
+          <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-primary via-primary-dark to-primary bg-clip-text text-transparent">
+            Welcome to Tuto
+          </h1>
+          <p className="text-muted-foreground">Quality education at affordable prices</p>
         </div>
 
-        <Card className="shadow-lg border-none">
-          <CardHeader className="text-center">
-            <CardTitle>Access Your Account</CardTitle>
+        <Card className="glass border-border/50 backdrop-blur-xl shadow-2xl">
+          <CardHeader className="text-center pb-4">
+            <CardTitle className="text-xl">Access Your Account</CardTitle>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="signin" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="signin">Sign In</TabsTrigger>
-                <TabsTrigger value="signup">Sign Up</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2 bg-muted/50">
+                <TabsTrigger value="signin" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground">
+                  Sign In
+                </TabsTrigger>
+                <TabsTrigger value="signup" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground">
+                  Sign Up
+                </TabsTrigger>
               </TabsList>
               
-              <TabsContent value="signin">
+              <TabsContent value="signin" className="space-y-4">
                 <form onSubmit={handleSignIn} className="space-y-4">
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="signin-email">Email</Label>
                     <Input
                       id="signin-email"
                       name="email"
                       type="email"
                       placeholder="Enter your email"
+                      className="bg-background/50"
                       required
                     />
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="signin-password">Password</Label>
                     <Input
                       id="signin-password"
                       name="password"
                       type="password"
                       placeholder="Enter your password"
+                      className="bg-background/50"
                       required
                     />
                   </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? 'Signing In...' : 'Sign In'}
+                  <Button 
+                    type="submit" 
+                    className="w-full gradient-primary shadow-lg hover:shadow-xl hover:shadow-primary/50 transition-all" 
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <span className="flex items-center gap-2">
+                        <span className="loading-skeleton w-4 h-4 rounded-full" />
+                        Signing In...
+                      </span>
+                    ) : (
+                      'Sign In'
+                    )}
                   </Button>
                 </form>
               </TabsContent>
               
-              <TabsContent value="signup">
+              <TabsContent value="signup" className="space-y-4">
                 <form onSubmit={handleSignUp} className="space-y-4">
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="fullName">Full Name</Label>
                     <Input
                       id="fullName"
                       name="fullName"
                       type="text"
                       placeholder="Enter your full name"
+                      className="bg-background/50"
                       required
                     />
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="signup-email">Email</Label>
                     <Input
                       id="signup-email"
                       name="email"
                       type="email"
                       placeholder="Enter your email"
+                      className="bg-background/50"
                       required
                     />
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="phone">Phone Number</Label>
                     <Input
                       id="phone"
                       name="phone"
                       type="tel"
                       placeholder="Enter your phone number"
+                      className="bg-background/50"
                       required
                     />
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="userType">I am a...</Label>
                     <Select name="userType" required>
-                      <SelectTrigger>
+                      <SelectTrigger className="bg-background/50">
                         <SelectValue placeholder="Select your role" />
                       </SelectTrigger>
                       <SelectContent>
@@ -215,19 +244,31 @@ const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess }) => {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div>
-                    <Label htmlFor="signup-password">Password</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-password">Password (min. 6 characters)</Label>
                     <Input
                       id="signup-password"
                       name="password"
                       type="password"
                       placeholder="Create a password"
+                      className="bg-background/50"
                       required
                       minLength={6}
                     />
                   </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? 'Creating Account...' : 'Create Account'}
+                  <Button 
+                    type="submit" 
+                    className="w-full gradient-primary shadow-lg hover:shadow-xl hover:shadow-primary/50 transition-all" 
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <span className="flex items-center gap-2">
+                        <span className="loading-skeleton w-4 h-4 rounded-full" />
+                        Creating Account...
+                      </span>
+                    ) : (
+                      'Create Account'
+                    )}
                   </Button>
                 </form>
               </TabsContent>
@@ -235,7 +276,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess }) => {
           </CardContent>
         </Card>
 
-        <p className="text-center text-sm text-gray-500">
+        <p className="text-center text-sm text-muted-foreground">
           By continuing, you agree to Tuto's Terms of Service and Privacy Policy
         </p>
       </div>

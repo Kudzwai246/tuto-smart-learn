@@ -44,13 +44,20 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
   ];
 
   return (
-    <div className="min-h-screen gradient-bg flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-8 animate-fade-in">
+    <div className="min-h-screen relative overflow-hidden flex flex-col items-center justify-center p-4">
+      {/* Animated Gradient Background */}
+      <div className="absolute inset-0 gradient-bg" />
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-primary-dark/20 animate-shimmer" style={{ backgroundSize: '200% 200%' }} />
+      
+      <div className="relative w-full max-w-md space-y-8 animate-fade-in">
         {/* Logo and Header */}
         <div className="text-center space-y-4">
-          <TutoLogo size="lg" className="justify-center" />
+          <div className="relative inline-block">
+            <div className="absolute inset-0 blur-xl bg-primary/30 rounded-full animate-pulse" />
+            <TutoLogo size="lg" className="relative justify-center" />
+          </div>
           <div>
-            <h1 className="text-3xl font-bold mb-2">
+            <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary via-primary-dark to-primary bg-clip-text text-transparent">
               Welcome to Tuto
             </h1>
             <p className="text-muted-foreground text-lg">
@@ -59,13 +66,18 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
           </div>
         </div>
 
-        {/* Features Grid */}
+        {/* Features Grid with Glass Effect */}
         <div className="grid grid-cols-2 gap-4">
           {features.map((feature, index) => (
-            <Card key={index} className="border-border shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105">
+            <Card 
+              key={index} 
+              className="glass border-border/50 backdrop-blur-lg shadow-lg hover:shadow-xl hover:shadow-primary/20 transition-all duration-300 hover:scale-105 hover:-translate-y-1 group"
+            >
               <CardContent className="p-4 text-center space-y-2">
                 <div className="flex justify-center">
-                  {feature.icon}
+                  <div className="p-2 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                    {feature.icon}
+                  </div>
                 </div>
                 <h3 className="font-semibold text-sm">
                   {feature.title}
@@ -78,10 +90,10 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
           ))}
         </div>
 
-        {/* Pricing Highlight */}
-        <Card className="gradient-primary text-primary-foreground border-none shadow-lg">
+        {/* Pricing Highlight with Gradient */}
+        <Card className="gradient-primary text-primary-foreground border-none shadow-xl hover:shadow-2xl transition-all duration-300">
           <CardContent className="p-6 text-center">
-            <h3 className="text-xl font-bold mb-2">
+            <h3 className="text-2xl font-bold mb-2 animate-fade-in">
               Starting from $7/month
             </h3>
             <p className="opacity-90">
@@ -90,16 +102,16 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
           </CardContent>
         </Card>
 
-        {/* Get Started Button */}
+        {/* Get Started Button with Enhanced Gradient */}
         <Button 
           onClick={onGetStarted}
-          className="w-full gradient-primary py-6 text-lg font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+          className="w-full gradient-primary py-6 text-lg font-semibold rounded-lg shadow-xl hover:shadow-2xl hover:shadow-primary/50 transition-all duration-300 hover:scale-105 active:scale-95"
         >
           Get Started
         </Button>
 
         {/* Footer */}
-        <p className="text-center text-sm text-muted-foreground">
+        <p className="text-center text-sm text-muted-foreground animate-fade-in">
           Revolutionizing education in Zimbabwe
         </p>
       </div>
