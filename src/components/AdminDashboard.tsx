@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import TutoLogo from './TutoLogo';
 import { ProfileManagement } from './ProfileManagement';
+import { ApplicationReviewModal } from './admin/ApplicationReviewModal';
 
 interface AdminDashboardProps {
   onSignOut: () => void;
@@ -28,6 +29,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSignOut }) => {
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentAdmin, setCurrentAdmin] = useState<any>(null);
+  const [selectedTeacher, setSelectedTeacher] = useState<any>(null);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
 
   useEffect(() => {
     fetchDashboardData();
@@ -329,24 +332,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSignOut }) => {
                         }>
                           {teacher.status}
                         </Badge>
-                        {teacher.status === 'pending' && (
-                          <div className="flex space-x-2">
-                            <Button 
-                              size="sm"
-                              className="gradient-primary"
-                              onClick={() => handleTeacherStatusUpdate(teacher.id, 'approved')}
-                            >
-                              Approve
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="destructive"
-                              onClick={() => handleTeacherStatusUpdate(teacher.id, 'rejected')}
-                            >
-                              Reject
-                            </Button>
-                          </div>
-                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedTeacher(teacher);
+                            setReviewModalOpen(true);
+                          }}
+                        >
+                          <Eye className="w-4 h-4 mr-1" />
+                          Review
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -426,6 +422,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSignOut }) => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Application Review Modal */}
+      <ApplicationReviewModal
+        open={reviewModalOpen}
+        onOpenChange={setReviewModalOpen}
+        teacher={selectedTeacher}
+        onStatusUpdate={fetchDashboardData}
+      />
     </div>
   );
 };
