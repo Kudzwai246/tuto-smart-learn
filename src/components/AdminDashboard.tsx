@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import TutoLogo from './TutoLogo';
 import { ProfileManagement } from './ProfileManagement';
 import { ApplicationReviewModal } from './admin/ApplicationReviewModal';
+import { ContentModerationPanel } from './admin/ContentModerationPanel';
 
 interface AdminDashboardProps {
   onSignOut: () => void;
@@ -310,6 +311,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSignOut }) => {
             <TabsTrigger value="subscriptions" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground">
               Subscriptions
             </TabsTrigger>
+            <TabsTrigger value="content" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground">
+              Content Moderation
+            </TabsTrigger>
             <TabsTrigger value="profile" className="data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground">
               Profile
             </TabsTrigger>
@@ -426,6 +430,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSignOut }) => {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="content" className="animate-fade-in">
+            <ContentModerationPanel />
           </TabsContent>
 
           <TabsContent value="profile" className="animate-fade-in">

@@ -9,6 +9,7 @@ import { Upload, Video } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Progress } from '@/components/ui/progress';
+import { useUploadQuota } from '@/hooks/useUploadQuota';
 
 interface VideoUploadProps {
   userId: string;
@@ -25,8 +26,9 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({ userId }) => {
     educationLevel: ''
   });
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const { quota, validateAndCheckQuota } = useUploadQuota(userId);
 
-  const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleVideoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       
@@ -36,9 +38,9 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({ userId }) => {
         return;
       }
 
-      // Validate file size (500MB max)
-      if (file.size > 524288000) {
-        toast.error('Video file must be less than 500MB');
+      // Validate file size and quota (100MB max per video)
+      const validation = await validateAndCheckQuota(file, 'video', 100);
+      if (!validation.valid) {
         return;
       }
 
@@ -126,6 +128,15 @@ export const VideoUpload: React.FC<VideoUploadProps> = ({ userId }) => {
   return (
     <Card>
       <CardContent className="pt-6">
+        {quota && (
+          <div className="mb-4 p-3 glass rounded-lg border border-primary/20">
+            <p className="text-sm font-medium mb-2">Upload Quota</p>
+            <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+              <div>Videos: {quota.videos_count}/{quota.videos_limit}</div>
+              <div>Storage: {quota.total_storage_mb.toFixed(0)}/{quota.storage_limit_mb} MB</div>
+            </div>
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Label htmlFor="video-upload">Video File *</Label>

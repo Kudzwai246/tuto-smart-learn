@@ -9,6 +9,7 @@ import { Upload } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Progress } from '@/components/ui/progress';
+import { useUploadQuota } from '@/hooks/useUploadQuota';
 
 interface NoteUploadProps {
   userId: string;
@@ -25,8 +26,9 @@ export const NoteUpload: React.FC<NoteUploadProps> = ({ userId }) => {
     educationLevel: ''
   });
   const [noteFile, setNoteFile] = useState<File | null>(null);
+  const { quota, validateAndCheckQuota } = useUploadQuota(userId);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       
@@ -43,9 +45,9 @@ export const NoteUpload: React.FC<NoteUploadProps> = ({ userId }) => {
         return;
       }
 
-      // Validate file size (50MB max)
-      if (file.size > 52428800) {
-        toast.error('File must be less than 50MB');
+      // Validate file size and quota (20MB max per note)
+      const validation = await validateAndCheckQuota(file, 'note', 20);
+      if (!validation.valid) {
         return;
       }
 
@@ -100,14 +102,14 @@ export const NoteUpload: React.FC<NoteUploadProps> = ({ userId }) => {
           education_level: formData.educationLevel,
           file_type: noteFile.type,
           file_size_bytes: noteFile.size,
-          status: 'approved' // Auto-approved for notes
+          status: 'pending' // Requires admin approval
         });
 
       if (dbError) throw dbError;
 
       setUploadProgress(100);
 
-      toast.success('Notes uploaded successfully!');
+      toast.success('Notes uploaded successfully! Awaiting admin approval.');
       
       // Reset form
       setFormData({
@@ -133,6 +135,15 @@ export const NoteUpload: React.FC<NoteUploadProps> = ({ userId }) => {
   return (
     <Card>
       <CardContent className="pt-6">
+        {quota && (
+          <div className="mb-4 p-3 glass rounded-lg border border-primary/20">
+            <p className="text-sm font-medium mb-2">Upload Quota</p>
+            <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+              <div>Notes: {quota.notes_count}/{quota.notes_limit}</div>
+              <div>Storage: {quota.total_storage_mb.toFixed(0)}/{quota.storage_limit_mb} MB</div>
+            </div>
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Label htmlFor="note-upload">File (PDF, DOC, TXT) *</Label>
