@@ -131,6 +131,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSignOut }) => {
 
       if (error) throw error;
 
+      // Create real-time notification
+      await supabase.from("notifications").insert({
+        user_id: teacherId,
+        title: newStatus === 'approved' ? "Application Approved! 🎉" : "Application Update",
+        message: newStatus === 'approved' 
+          ? "Congratulations! Your teacher application has been approved. You can now start accepting students."
+          : "Unfortunately, your teacher application was not approved at this time. Please review the feedback and reapply if you wish.",
+        type: newStatus === 'approved' ? "success" : "error",
+        metadata: { application_status: newStatus },
+      });
+
       // Send email notification
       try {
         await supabase.functions.invoke('send-notifications', {

@@ -7,6 +7,8 @@ import { ProfileManagement } from '@/components/ProfileManagement';
 import SettingsScreen from '@/components/SettingsScreen';
 import DiscoverTeachersScreen from '@/components/DiscoverTeachersScreen';
 import StudentProfileView from '@/components/StudentProfileView';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
+import TutoLogo from '@/components/TutoLogo';
 
 interface DashboardWithNavProps {
   userId: string;
@@ -115,6 +117,15 @@ const DashboardWithNav: React.FC<DashboardWithNavProps> = ({
 
   return (
     <div className="h-screen flex flex-col bg-background">
+      <header className="glass backdrop-blur-xl border-b border-primary/20 sticky top-0 z-10">
+        <div className="px-6 py-4 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <TutoLogo size="sm" />
+            <h1 className="text-xl font-bold gradient-text">TutoSmart</h1>
+          </div>
+          <NotificationBell />
+        </div>
+      </header>
       <div className="flex-1 overflow-hidden">
         {renderContent()}
       </div>
