@@ -8,7 +8,7 @@ interface WelcomeScreenProps {
 
 const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
   return (
-    <div className="min-h-screen relative overflow-hidden flex flex-col">
+    <div className="h-screen w-screen relative overflow-hidden flex flex-col m-0 p-0">
       {/* Full-screen Gradient Background */}
       <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary-dark to-primary" />
       <div className="absolute inset-0 bg-gradient-to-t from-background/20 via-transparent to-transparent" />
@@ -27,7 +27,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
               Tuto
             </h1>
             <p className="text-lg text-primary-foreground/80 font-light">
-              Learn anything, anywhere
+              Everything is an understatement
             </p>
           </div>
         </div>

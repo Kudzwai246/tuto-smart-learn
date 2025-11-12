@@ -104,6 +104,25 @@
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow-x: hidden;
+  }
+  
+  html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+  }
+  
+  #root {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
   }
 
   .app-container {
@@ -121,10 +140,6 @@
     }
   }
 
-  /* Smooth scrolling */
-  html {
-    scroll-behavior: smooth;
-  }
 
   /* Custom scrollbar for webkit browsers */
   ::-webkit-scrollbar {
