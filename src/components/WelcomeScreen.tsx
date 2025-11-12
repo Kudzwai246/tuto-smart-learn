@@ -15,14 +15,14 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
       
       {/* Main Content - Centered */}
       <div className="relative flex-1 flex flex-col items-center justify-center px-6 pb-32">
-        <div className="text-center space-y-6 animate-fade-in">
+        <div className="text-center space-y-6">
           {/* Logo */}
-          <div className="flex justify-center">
+          <div className="flex justify-center animate-fade-in">
             <TutoLogo size="lg" className="justify-center" />
           </div>
           
           {/* Tagline */}
-          <div className="space-y-2">
+          <div className="space-y-2 animate-fade-in [animation-delay:200ms] opacity-0 [animation-fill-mode:forwards]">
             <h1 className="text-5xl md:text-6xl font-bold text-primary-foreground tracking-tight">
               Tuto
             </h1>
@@ -34,7 +34,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
       </div>
 
       {/* Bottom CTA Section */}
-      <div className="relative px-6 pb-12 space-y-4">
+      <div className="relative px-6 pb-12 space-y-4 animate-fade-in [animation-delay:400ms] opacity-0 [animation-fill-mode:forwards]">
         <Button 
           onClick={onGetStarted}
           variant="secondary"
