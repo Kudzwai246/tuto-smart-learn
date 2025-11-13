@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#FF8C00</color>
-    <color name="colorPrimaryDark">#E67E00</color>
-    <color name="colorAccent">#FF8C00</color>
-    <color name="statusBarColor">#FF8C00</color>
-    <color name="toolbarColor">#FF8C00</color>
-    <color name="navigationBarColor">#FF8C00</color>
-    <color name="splashBackground">#FFFFFF</color>
+    <color name="colorPrimary">#1BA7E8</color>
+    <color name="colorPrimaryDark">#0B5C8C</color>
+    <color name="colorAccent">#1BA7E8</color>
+    <color name="statusBarColor">#1BA7E8</color>
+    <color name="toolbarColor">#1BA7E8</color>
+    <color name="navigationBarColor">#1BA7E8</color>
+    <color name="splashBackground">#1BA7E8</color>
 </resources>
