@@ -67,13 +67,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSignOut }) => {
           profiles!inner(*)
         `);
 
-      // Fetch teachers with their profiles  
-      const { data: teachersData } = await supabase
+      // Fetch teachers with their profiles (admins can see all due to RLS policy)
+      const { data: teachersData, error: teachersError } = await supabase
         .from('teachers')
         .select(`
           *,
           profiles!inner(*)
         `);
+      
+      if (teachersError) {
+        console.error('Error fetching teachers:', teachersError);
+        toast.error('Failed to load teacher applications');
+      } else {
+        console.log('Teachers fetched successfully:', teachersData?.length || 0, 'records');
+        console.log('Pending teachers:', teachersData?.filter(t => t.status === 'pending').length || 0);
+      }
 
       // Fetch subscriptions with related data
       const { data: subscriptionsData } = await supabase
@@ -145,33 +153,45 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSignOut }) => {
 
       // Send email notification
       try {
-        await supabase.functions.invoke('send-notifications', {
-          body: {
-            notificationData: {
-              recipientEmail: teacherData.profiles.email,
-              recipientName: teacherData.profiles.full_name,
-              notificationType: newStatus === 'approved' ? 'account_approved' : 'account_rejected',
-              title: newStatus === 'approved' 
-                ? 'Welcome Aboard! Your Tuto Teacher Account is Approved 🎉'
-                : 'Teacher Application Status Update',
-              message: newStatus === 'approved'
-                ? 'Congratulations! Your application has been approved!'
-                : 'Thank you for your interest in becoming a Tuto teacher.',
-              additionalData: {
-                fullName: teacherData.profiles.full_name,
-                subjects: teacherData.subjects,
-                city: teacherData.location_city,
-                experience: teacherData.experience_years,
-                rejectionReason: newStatus === 'rejected' 
-                  ? 'Please contact support@tuto.co.zw for more information about your application.'
-                  : undefined
-              }
+        console.log('Sending email notification to:', teacherData.profiles.email);
+        const emailPayload = {
+          notificationData: {
+            recipientEmail: teacherData.profiles.email,
+            recipientName: teacherData.profiles.full_name,
+            notificationType: newStatus === 'approved' ? 'account_approved' : 'account_rejected',
+            title: newStatus === 'approved' 
+              ? 'Welcome Aboard! Your Tuto Teacher Account is Approved 🎉'
+              : 'Teacher Application Status Update',
+            message: newStatus === 'approved'
+              ? 'Congratulations! Your application has been approved!'
+              : 'Thank you for your interest in becoming a Tuto teacher.',
+            additionalData: {
+              fullName: teacherData.profiles.full_name,
+              subjects: teacherData.subjects,
+              city: teacherData.location_city,
+              experience: teacherData.experience_years,
+              rejectionReason: newStatus === 'rejected' 
+                ? 'Please contact support@tuto.co.zw for more information about your application.'
+                : undefined
             }
           }
+        };
+        console.log('Email payload:', JSON.stringify(emailPayload, null, 2));
+        
+        const { data: emailResult, error: emailError } = await supabase.functions.invoke('send-notifications', {
+          body: emailPayload
         });
+        
+        if (emailError) {
+          console.error('Edge function error:', emailError);
+          toast.error('Status updated but email notification failed');
+        } else {
+          console.log('Email sent successfully:', emailResult);
+          toast.success('Email notification sent!');
+        }
       } catch (emailError) {
         console.error('Failed to send notification email:', emailError);
-        // Don't block the status update if email fails
+        toast.error('Status updated but email failed to send');
       }
 
       toast.success(`Teacher ${newStatus} successfully${newStatus === 'approved' ? ' - Welcome email sent!' : ''}`);

@@ -1,1 +1,7 @@
 project_id = "nelioyzsdyxufjlorzcm"
+
+[functions.send-notifications]
+verify_jwt = false
+
+[functions.send-progress-reports]
+verify_jwt = false
