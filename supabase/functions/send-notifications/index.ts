@@ -23,14 +23,27 @@ interface NotificationData {
 }
 
 const handler = async (req: Request): Promise<Response> => {
+  console.log('=== send-notifications function invoked ===');
+  console.log('Request method:', req.method);
+  
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { notificationData }: { notificationData: NotificationData } = await req.json();
+    const body = await req.json();
+    console.log('Request body received:', JSON.stringify(body, null, 2));
+    
+    const { notificationData }: { notificationData: NotificationData } = body;
 
-    console.log('Processing notification:', notificationData.notificationType);
+    if (!notificationData) {
+      console.error('Missing notificationData in request body');
+      throw new Error('notificationData is required');
+    }
+
+    console.log('Processing notification type:', notificationData.notificationType);
+    console.log('Recipient:', notificationData.recipientEmail);
+    console.log('Recipient name:', notificationData.recipientName);
 
     let emailContent: string;
 
@@ -97,6 +110,11 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Send email using Resend
+    console.log('Attempting to send email via Resend...');
+    console.log('From: Tuto <onboarding@resend.dev>');
+    console.log('To:', notificationData.recipientEmail);
+    console.log('Subject:', notificationData.title);
+    
     const { data, error } = await resend.emails.send({
       from: 'Tuto <onboarding@resend.dev>',
       to: [notificationData.recipientEmail],
@@ -105,11 +123,12 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     if (error) {
-      console.error('Resend error:', error);
-      throw error;
+      console.error('Resend API error:', JSON.stringify(error, null, 2));
+      throw new Error(`Resend API error: ${error.message || JSON.stringify(error)}`);
     }
 
-    console.log('Email sent successfully:', data);
+    console.log('Email sent successfully!');
+    console.log('Resend response:', JSON.stringify(data, null, 2));
 
     return new Response(
       JSON.stringify({ 
