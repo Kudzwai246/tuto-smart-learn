@@ -1,9 +1,8 @@
 import emailjs from '@emailjs/browser';
 
 // EmailJS Configuration
-// User needs to set these up at https://www.emailjs.com/
-const EMAILJS_SERVICE_ID = 'service_tuto'; // Replace with your service ID
-const EMAILJS_PUBLIC_KEY = 'YOUR_PUBLIC_KEY'; // Replace with your public key
+const EMAILJS_SERVICE_ID = 'service_qqx17rn';
+const EMAILJS_PUBLIC_KEY = '1Z1lbtB6uknMIZIIi';
 
 // Template IDs - user creates these in EmailJS dashboard
 const TEMPLATES = {
@@ -105,5 +104,5 @@ export const sendAccountRejectedEmail = async (params: AccountRejectedParams): P
 
 // Check if EmailJS is properly configured
 export const isEmailJSConfigured = (): boolean => {
-  return EMAILJS_PUBLIC_KEY !== 'YOUR_PUBLIC_KEY' && EMAILJS_SERVICE_ID !== 'service_tuto';
+  return EMAILJS_PUBLIC_KEY.length > 0 && EMAILJS_SERVICE_ID.length > 0;
 };
