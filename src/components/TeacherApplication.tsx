@@ -10,6 +10,7 @@ import TutoLogo from './TutoLogo';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Progress } from '@/components/ui/progress';
+import { sendApplicationSubmittedEmail, isEmailJSConfigured } from '@/lib/emailService';
 
 interface TeacherApplicationProps {
   onBack: () => void;
@@ -317,28 +318,23 @@ const TeacherApplication: React.FC<TeacherApplicationProps> = ({ onBack, onAppli
         })
         .eq('id', user.id);
 
-      // Send application submitted email
-      try {
-        await supabase.functions.invoke('send-notifications', {
-          body: {
-            notificationData: {
-              recipientEmail: formData.email,
-              recipientName: formData.fullName,
-              notificationType: 'application_submitted',
-              title: 'Application Received - Under Review (48 Hours)',
-              message: 'Thank you for applying to become a Tuto teacher! Your application has been successfully received and is now under review.',
-              additionalData: {
-                applicationId: insertedTeacher?.id,
-                subjects: validSubjects,
-                city: formData.locationCity,
-                experience: formData.experienceYears,
-                documentsUploaded: uploadedDocs.length
-              }
-            }
-          }
-        });
-      } catch (emailError) {
-        console.error('Failed to send confirmation email:', emailError);
+      // Send application submitted email via EmailJS
+      if (isEmailJSConfigured()) {
+        try {
+          await sendApplicationSubmittedEmail({
+            recipientName: formData.fullName,
+            recipientEmail: formData.email,
+            applicationId: insertedTeacher?.id || 'N/A',
+            subjects: validSubjects,
+            city: formData.locationCity,
+            documentsCount: uploadedDocs.length,
+          });
+          console.log('Application confirmation email sent via EmailJS');
+        } catch (emailError) {
+          console.error('Failed to send confirmation email:', emailError);
+        }
+      } else {
+        console.log('EmailJS not configured - skipping email notification');
       }
 
       toast.success('Teacher application submitted successfully! Check your email for confirmation.');

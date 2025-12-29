@@ -11,6 +11,7 @@ import TutoLogo from './TutoLogo';
 import { ProfileManagement } from './ProfileManagement';
 import { ApplicationReviewModal } from './admin/ApplicationReviewModal';
 import { ContentModerationPanel } from './admin/ContentModerationPanel';
+import { sendAccountApprovedEmail, sendAccountRejectedEmail, isEmailJSConfigured } from '@/lib/emailService';
 
 interface AdminDashboardProps {
   onSignOut: () => void;
@@ -151,47 +152,29 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSignOut }) => {
         metadata: { application_status: newStatus },
       });
 
-      // Send email notification
-      try {
-        console.log('Sending email notification to:', teacherData.profiles.email);
-        const emailPayload = {
-          notificationData: {
-            recipientEmail: teacherData.profiles.email,
-            recipientName: teacherData.profiles.full_name,
-            notificationType: newStatus === 'approved' ? 'account_approved' : 'account_rejected',
-            title: newStatus === 'approved' 
-              ? 'Welcome Aboard! Your Tuto Teacher Account is Approved 🎉'
-              : 'Teacher Application Status Update',
-            message: newStatus === 'approved'
-              ? 'Congratulations! Your application has been approved!'
-              : 'Thank you for your interest in becoming a Tuto teacher.',
-            additionalData: {
-              fullName: teacherData.profiles.full_name,
-              subjects: teacherData.subjects,
-              city: teacherData.location_city,
-              experience: teacherData.experience_years,
-              rejectionReason: newStatus === 'rejected' 
-                ? 'Please contact support@tuto.co.zw for more information about your application.'
-                : undefined
-            }
+      // Send email notification via EmailJS
+      if (isEmailJSConfigured()) {
+        try {
+          if (newStatus === 'approved') {
+            await sendAccountApprovedEmail({
+              recipientName: teacherData.profiles.full_name,
+              recipientEmail: teacherData.profiles.email,
+            });
+          } else {
+            await sendAccountRejectedEmail({
+              recipientName: teacherData.profiles.full_name,
+              recipientEmail: teacherData.profiles.email,
+              rejectionReason: 'Please contact support@tuto.co.zw for more information about your application.',
+            });
           }
-        };
-        console.log('Email payload:', JSON.stringify(emailPayload, null, 2));
-        
-        const { data: emailResult, error: emailError } = await supabase.functions.invoke('send-notifications', {
-          body: emailPayload
-        });
-        
-        if (emailError) {
-          console.error('Edge function error:', emailError);
-          toast.error('Status updated but email notification failed');
-        } else {
-          console.log('Email sent successfully:', emailResult);
+          console.log('Email sent successfully via EmailJS');
           toast.success('Email notification sent!');
+        } catch (emailError) {
+          console.error('Failed to send notification email:', emailError);
+          toast.error('Status updated but email failed to send');
         }
-      } catch (emailError) {
-        console.error('Failed to send notification email:', emailError);
-        toast.error('Status updated but email failed to send');
+      } else {
+        console.log('EmailJS not configured - skipping email notification');
       }
 
       toast.success(`Teacher ${newStatus} successfully${newStatus === 'approved' ? ' - Welcome email sent!' : ''}`);
