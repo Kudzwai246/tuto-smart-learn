@@ -28,11 +28,8 @@ jobs:
 
       - name: Install npm dependencies
         run: |
-          if [ -f package-lock.json ]; then
-            npm ci --no-audit --no-fund
-          else
-            npm install --no-audit --no-fund
-          fi
+          # Use npm install to auto-sync package-lock.json if needed
+          npm install --no-audit --no-fund
         shell: bash
 
       - name: Build web assets
