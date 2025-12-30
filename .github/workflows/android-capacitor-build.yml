@@ -291,21 +291,12 @@ jobs:
           fi
           
           # Check if APK was actually built
-          if [ ! -f "app/build/outputs/apk/debug/app-debug.apk" ]; then
-            echo "❌ ERROR: Debug APK was not created!"
-            exit 1
-          fi
-          
-          echo "✅ Debug APK built successfully"
-          ls -lh app/build/outputs/apk/debug/app-debug.apk
-          fi
-          
           echo "=== Debug APK Build Complete ==="
           if [ -f "app/build/outputs/apk/debug/app-debug.apk" ]; then
-            echo "✓ Debug APK built successfully"
+            echo "✅ Debug APK built successfully"
             ls -la app/build/outputs/apk/debug/
           else
-            echo "✗ Debug APK not found after build"
+            echo "❌ Debug APK not found after build"
             find . -name "*.apk" -type f 2>/dev/null || echo "No APK files found anywhere"
             exit 1
           fi
