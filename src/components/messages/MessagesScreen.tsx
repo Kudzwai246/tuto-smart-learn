@@ -7,33 +7,64 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import ConversationView from './ConversationView';
+import NewConversationSheet from './NewConversationSheet';
 import { cn } from '@/lib/utils';
 
 interface MessagesScreenProps {
   userId: string;
+  initialConversationId?: string | null;
 }
 
-const MessagesScreen: React.FC<MessagesScreenProps> = ({ userId }) => {
+const MessagesScreen: React.FC<MessagesScreenProps> = ({ userId, initialConversationId }) => {
   const [conversations, setConversations] = useState<any[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [showNewConversation, setShowNewConversation] = useState(false);
+  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchConversations();
 
     // Subscribe to new messages
-    const subscription = supabase
+    const messageSubscription = supabase
       .channel('messages_channel')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => {
         fetchConversations();
       })
       .subscribe();
 
+    // Subscribe to presence for online status
+    const presenceChannel = supabase.channel('online_users');
+    presenceChannel
+      .on('presence', { event: 'sync' }, () => {
+        const state = presenceChannel.presenceState();
+        const online = new Set<string>();
+        Object.values(state).forEach((presences: any) => {
+          presences.forEach((p: any) => online.add(p.user_id));
+        });
+        setOnlineUsers(online);
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await presenceChannel.track({ user_id: userId, online_at: new Date().toISOString() });
+        }
+      });
+
     return () => {
-      subscription.unsubscribe();
+      messageSubscription.unsubscribe();
+      presenceChannel.unsubscribe();
     };
   }, [userId]);
+
+  useEffect(() => {
+    if (initialConversationId && conversations.length > 0) {
+      const conv = conversations.find(c => c.id === initialConversationId);
+      if (conv) {
+        setSelectedConversation(initialConversationId);
+      }
+    }
+  }, [initialConversationId, conversations]);
 
   const fetchConversations = async () => {
     try {
@@ -70,7 +101,10 @@ const MessagesScreen: React.FC<MessagesScreenProps> = ({ userId }) => {
               ? conv.participant_two_profile
               : conv.participant_one_profile;
 
-          const lastMessage = conv.messages?.[0];
+          const sortedMessages = [...(conv.messages || [])].sort(
+            (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
+          const lastMessage = sortedMessages[0];
           const unreadCount = conv.messages?.filter(
             (m: any) => m.sender_id !== userId && m.status !== 'read'
           ).length || 0;
@@ -104,6 +138,11 @@ const MessagesScreen: React.FC<MessagesScreenProps> = ({ userId }) => {
     return date.toLocaleDateString();
   };
 
+  const handleConversationCreated = (conversationId: string) => {
+    fetchConversations();
+    setSelectedConversation(conversationId);
+  };
+
   const filteredConversations = conversations.filter((conv) =>
     conv.otherUser?.full_name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -118,6 +157,7 @@ const MessagesScreen: React.FC<MessagesScreenProps> = ({ userId }) => {
           setSelectedConversation(null);
           fetchConversations();
         }}
+        isOtherUserOnline={conv?.otherUser ? onlineUsers.has(conv.otherUser.id) : false}
       />
     );
   }
@@ -129,7 +169,11 @@ const MessagesScreen: React.FC<MessagesScreenProps> = ({ userId }) => {
         <div className="max-w-md mx-auto space-y-3">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold">Messages</h1>
-            <Button variant="ghost" size="icon">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => setShowNewConversation(true)}
+            >
               <Plus className="w-5 h-5" />
             </Button>
           </div>
@@ -162,56 +206,74 @@ const MessagesScreen: React.FC<MessagesScreenProps> = ({ userId }) => {
           ) : filteredConversations.length === 0 ? (
             <div className="text-center py-12 px-4">
               <p className="text-lg font-medium mb-2">No conversations</p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground mb-4">
                 Start chatting with teachers or students!
               </p>
+              <Button onClick={() => setShowNewConversation(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                New Conversation
+              </Button>
             </div>
           ) : (
-            filteredConversations.map((conv) => (
-              <button
-                key={conv.id}
-                onClick={() => setSelectedConversation(conv.id)}
-                className="w-full flex items-center gap-3 p-4 border-b border-border hover:bg-muted/50 transition-colors touch-manipulation"
-              >
-                <div className="relative">
-                  <Avatar className="w-12 h-12">
-                    <AvatarImage src={conv.otherUser?.avatar_url} />
-                    <AvatarFallback className="gradient-primary text-white">
-                      {conv.otherUser?.full_name?.charAt(0) || 'U'}
-                    </AvatarFallback>
-                  </Avatar>
-                  {/* Online indicator */}
-                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-success rounded-full border-2 border-card" />
-                </div>
+            filteredConversations.map((conv) => {
+              const isOnline = conv.otherUser ? onlineUsers.has(conv.otherUser.id) : false;
+              
+              return (
+                <button
+                  key={conv.id}
+                  onClick={() => setSelectedConversation(conv.id)}
+                  className="w-full flex items-center gap-3 p-4 border-b border-border hover:bg-muted/50 transition-colors touch-manipulation"
+                >
+                  <div className="relative">
+                    <Avatar className="w-12 h-12">
+                      <AvatarImage src={conv.otherUser?.avatar_url} />
+                      <AvatarFallback className="gradient-primary text-white">
+                        {conv.otherUser?.full_name?.charAt(0) || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                    {/* Online indicator */}
+                    <div className={cn(
+                      "absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-card",
+                      isOnline ? "bg-success" : "bg-muted-foreground"
+                    )} />
+                  </div>
 
-                <div className="flex-1 text-left overflow-hidden">
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="font-semibold text-sm truncate">
-                      {conv.otherUser?.full_name || 'User'}
-                    </p>
-                    <span className="text-xs text-muted-foreground">
-                      {formatTimeAgo(conv.last_message_at)}
-                    </span>
+                  <div className="flex-1 text-left overflow-hidden">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="font-semibold text-sm truncate">
+                        {conv.otherUser?.full_name || 'User'}
+                      </p>
+                      <span className="text-xs text-muted-foreground">
+                        {conv.last_message_at ? formatTimeAgo(conv.last_message_at) : ''}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className={cn(
+                        "text-sm truncate",
+                        conv.unreadCount > 0 ? "font-medium text-foreground" : "text-muted-foreground"
+                      )}>
+                        {conv.lastMessage?.content || 'No messages yet'}
+                      </p>
+                      {conv.unreadCount > 0 && (
+                        <Badge className="gradient-primary text-white ml-2">
+                          {conv.unreadCount}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <p className={cn(
-                      "text-sm truncate",
-                      conv.unreadCount > 0 ? "font-medium text-foreground" : "text-muted-foreground"
-                    )}>
-                      {conv.lastMessage?.content || 'No messages yet'}
-                    </p>
-                    {conv.unreadCount > 0 && (
-                      <Badge className="gradient-primary text-white ml-2">
-                        {conv.unreadCount}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </button>
-            ))
+                </button>
+              );
+            })
           )}
         </div>
       </ScrollArea>
+
+      <NewConversationSheet
+        open={showNewConversation}
+        onOpenChange={setShowNewConversation}
+        currentUserId={userId}
+        onConversationCreated={handleConversationCreated}
+      />
     </div>
   );
 };

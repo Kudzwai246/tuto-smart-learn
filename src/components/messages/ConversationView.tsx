@@ -7,22 +7,27 @@ import { Textarea } from '@/components/ui/textarea';
 import ChatBubble from './ChatBubble';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface ConversationViewProps {
   conversation: any;
   currentUserId: string;
   onBack: () => void;
+  isOtherUserOnline?: boolean;
 }
 
 const ConversationView: React.FC<ConversationViewProps> = ({
   conversation,
   currentUserId,
   onBack,
+  isOtherUserOnline = false,
 }) => {
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (conversation) {
@@ -30,7 +35,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
       markMessagesAsRead();
 
       // Subscribe to new messages
-      const subscription = supabase
+      const messageSubscription = supabase
         .channel(`conversation_${conversation.id}`)
         .on(
           'postgres_changes',
@@ -43,12 +48,34 @@ const ConversationView: React.FC<ConversationViewProps> = ({
           (payload) => {
             setMessages((prev) => [...prev, payload.new]);
             scrollToBottom();
+            // Mark as read if from other user
+            if (payload.new.sender_id !== currentUserId) {
+              markMessagesAsRead();
+            }
           }
         )
         .subscribe();
 
+      // Subscribe to typing indicator
+      const typingChannel = supabase.channel(`typing_${conversation.id}`);
+      typingChannel
+        .on('broadcast', { event: 'typing' }, ({ payload }) => {
+          if (payload.user_id !== currentUserId) {
+            setIsTyping(true);
+            if (typingTimeoutRef.current) {
+              clearTimeout(typingTimeoutRef.current);
+            }
+            typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 2000);
+          }
+        })
+        .subscribe();
+
       return () => {
-        subscription.unsubscribe();
+        messageSubscription.unsubscribe();
+        typingChannel.unsubscribe();
+        if (typingTimeoutRef.current) {
+          clearTimeout(typingTimeoutRef.current);
+        }
       };
     }
   }, [conversation]);
@@ -77,7 +104,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
         .update({ status: 'read' })
         .eq('conversation_id', conversation.id)
         .neq('sender_id', currentUserId)
-        .eq('status', 'delivered');
+        .in('status', ['sent', 'delivered']);
     } catch (error) {
       console.error('Error marking messages as read:', error);
     }
@@ -89,19 +116,57 @@ const ConversationView: React.FC<ConversationViewProps> = ({
     }
   };
 
+  const broadcastTyping = async () => {
+    try {
+      const channel = supabase.channel(`typing_${conversation.id}`);
+      await channel.send({
+        type: 'broadcast',
+        event: 'typing',
+        payload: { user_id: currentUserId },
+      });
+    } catch (error) {
+      // Silently fail typing indicator
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setNewMessage(e.target.value);
+    broadcastTyping();
+  };
+
   const handleSend = async () => {
     if (!newMessage.trim()) return;
 
+    const messageContent = newMessage.trim();
+    setNewMessage('');
     setSending(true);
+
+    // Optimistic update
+    const optimisticMessage = {
+      id: `temp_${Date.now()}`,
+      conversation_id: conversation.id,
+      sender_id: currentUserId,
+      content: messageContent,
+      status: 'sending',
+      created_at: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, optimisticMessage]);
+    scrollToBottom();
+
     try {
-      const { error } = await supabase.from('messages').insert({
+      const { data, error } = await supabase.from('messages').insert({
         conversation_id: conversation.id,
         sender_id: currentUserId,
-        content: newMessage.trim(),
+        content: messageContent,
         status: 'sent',
-      });
+      }).select().single();
 
       if (error) throw error;
+
+      // Replace optimistic message with real one
+      setMessages((prev) => 
+        prev.map((m) => (m.id === optimisticMessage.id ? data : m))
+      );
 
       // Update conversation last_message_at
       await supabase
@@ -109,10 +174,12 @@ const ConversationView: React.FC<ConversationViewProps> = ({
         .update({ last_message_at: new Date().toISOString() })
         .eq('id', conversation.id);
 
-      setNewMessage('');
     } catch (error) {
       console.error('Error sending message:', error);
       toast.error('Failed to send message');
+      // Remove optimistic message on failure
+      setMessages((prev) => prev.filter((m) => m.id !== optimisticMessage.id));
+      setNewMessage(messageContent);
     } finally {
       setSending(false);
     }
@@ -135,15 +202,29 @@ const ConversationView: React.FC<ConversationViewProps> = ({
           <Button variant="ghost" size="icon" onClick={onBack}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <Avatar className="w-10 h-10">
-            <AvatarImage src={otherUser?.avatar_url} />
-            <AvatarFallback className="gradient-primary text-white">
-              {otherUser?.full_name?.charAt(0) || 'U'}
-            </AvatarFallback>
-          </Avatar>
+          <div className="relative">
+            <Avatar className="w-10 h-10">
+              <AvatarImage src={otherUser?.avatar_url} />
+              <AvatarFallback className="gradient-primary text-white">
+                {otherUser?.full_name?.charAt(0) || 'U'}
+              </AvatarFallback>
+            </Avatar>
+            <div className={cn(
+              "absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-card",
+              isOtherUserOnline ? "bg-success" : "bg-muted-foreground"
+            )} />
+          </div>
           <div className="flex-1">
             <p className="font-semibold">{otherUser?.full_name || 'User'}</p>
-            <p className="text-xs text-muted-foreground">Online</p>
+            <p className="text-xs text-muted-foreground">
+              {isTyping ? (
+                <span className="text-primary animate-pulse">typing...</span>
+              ) : isOtherUserOnline ? (
+                'Online'
+              ) : (
+                'Offline'
+              )}
+            </p>
           </div>
           <Button variant="ghost" size="icon">
             <MoreVertical className="w-5 h-5" />
@@ -167,6 +248,15 @@ const ConversationView: React.FC<ConversationViewProps> = ({
               />
             ))
           )}
+          {isTyping && (
+            <div className="flex items-center gap-2 text-muted-foreground text-sm">
+              <div className="flex gap-1">
+                <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
+            </div>
+          )}
           <div ref={scrollRef} />
         </div>
       </ScrollArea>
@@ -185,7 +275,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
             <Textarea
               placeholder="Type a message..."
               value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
+              onChange={handleInputChange}
               onKeyPress={handleKeyPress}
               className="min-h-[44px] max-h-[120px] resize-none pr-10"
               rows={1}

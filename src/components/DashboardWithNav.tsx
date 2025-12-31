@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import BottomNav, { TabType } from '@/components/navigation/BottomNav';
 import FeedScreen from '@/components/feed/FeedScreen';
 import MessagesScreen from '@/components/messages/MessagesScreen';
 import { TutoLibrary } from '@/components/library/TutoLibrary';
 import { ProfileManagement } from '@/components/ProfileManagement';
 import SettingsScreen from '@/components/SettingsScreen';
-import DiscoverTeachersScreen from '@/components/DiscoverTeachersScreen';
+import DiscoverScreen from '@/components/discover/DiscoverScreen';
 import StudentProfileView from '@/components/StudentProfileView';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import TutoLogo from '@/components/TutoLogo';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface DashboardWithNavProps {
   userId: string;
@@ -17,7 +19,7 @@ interface DashboardWithNavProps {
   hasActiveSubscription?: boolean;
 }
 
-type ViewType = 'main' | 'settings' | 'discover-teachers' | 'student-profile';
+type ViewType = 'main' | 'settings' | 'student-profile';
 
 const DashboardWithNav: React.FC<DashboardWithNavProps> = ({
   userId,
@@ -28,9 +30,9 @@ const DashboardWithNav: React.FC<DashboardWithNavProps> = ({
   const [activeTab, setActiveTab] = useState<TabType>('feed');
   const [currentView, setCurrentView] = useState<ViewType>('main');
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [pendingConversationId, setPendingConversationId] = useState<string | null>(null);
 
   const handleShowSettings = () => setCurrentView('settings');
-  const handleShowDiscoverTeachers = () => setCurrentView('discover-teachers');
   const handleShowStudentProfile = (studentId: string) => {
     setSelectedStudentId(studentId);
     setCurrentView('student-profile');
@@ -40,33 +42,49 @@ const DashboardWithNav: React.FC<DashboardWithNavProps> = ({
     setSelectedStudentId(null);
   };
 
-  const handleMessageTeacher = (teacherId: string) => {
-    // Navigate to messages and create conversation
-    setActiveTab('messages');
-    handleBackToMain();
-    // TODO: Open conversation with teacher
-  };
+  const handleMessageUser = useCallback(async (targetUserId: string) => {
+    try {
+      // Check if conversation already exists
+      const { data: existingConv } = await supabase
+        .from('conversations')
+        .select('id')
+        .or(`and(participant_one.eq.${userId},participant_two.eq.${targetUserId}),and(participant_one.eq.${targetUserId},participant_two.eq.${userId})`)
+        .maybeSingle();
 
-  const handleMessageStudent = (studentId: string) => {
-    // Navigate to messages and create conversation
-    setActiveTab('messages');
-    handleBackToMain();
-    // TODO: Open conversation with student
-  };
+      let conversationId: string;
+
+      if (existingConv) {
+        conversationId = existingConv.id;
+      } else {
+        // Create new conversation
+        const { data: newConv, error } = await supabase
+          .from('conversations')
+          .insert({
+            participant_one: userId,
+            participant_two: targetUserId,
+            last_message_at: new Date().toISOString(),
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        conversationId = newConv.id;
+        toast.success('Conversation created!');
+      }
+
+      // Navigate to messages with the conversation
+      setPendingConversationId(conversationId);
+      setActiveTab('messages');
+      handleBackToMain();
+    } catch (error) {
+      console.error('Error creating conversation:', error);
+      toast.error('Failed to start conversation');
+    }
+  }, [userId]);
 
   // Special views (no bottom nav)
   if (currentView === 'settings') {
     return <SettingsScreen onBack={handleBackToMain} onSignOut={onSignOut} />;
-  }
-
-  if (currentView === 'discover-teachers') {
-    return (
-      <DiscoverTeachersScreen
-        userId={userId}
-        onBack={handleBackToMain}
-        onMessageTeacher={handleMessageTeacher}
-      />
-    );
   }
 
   if (currentView === 'student-profile' && selectedStudentId) {
@@ -75,7 +93,7 @@ const DashboardWithNav: React.FC<DashboardWithNavProps> = ({
         studentId={selectedStudentId}
         currentUserId={userId}
         onBack={handleBackToMain}
-        onMessage={handleMessageStudent}
+        onMessage={() => handleMessageUser(selectedStudentId)}
       />
     );
   }
@@ -87,8 +105,15 @@ const DashboardWithNav: React.FC<DashboardWithNavProps> = ({
           <FeedScreen
             userId={userId}
             userType={userType}
-            onShowDiscoverTeachers={userType === 'student' ? handleShowDiscoverTeachers : undefined}
             onShowStudentProfile={handleShowStudentProfile}
+          />
+        );
+      case 'discover':
+        return (
+          <DiscoverScreen
+            userId={userId}
+            userType={userType === 'admin' ? 'student' : userType}
+            onMessageUser={handleMessageUser}
           />
         );
       case 'library':
@@ -100,7 +125,17 @@ const DashboardWithNav: React.FC<DashboardWithNavProps> = ({
           />
         );
       case 'messages':
-        return <MessagesScreen userId={userId} />;
+        const convId = pendingConversationId;
+        // Clear pending after passing it
+        if (pendingConversationId) {
+          setTimeout(() => setPendingConversationId(null), 100);
+        }
+        return (
+          <MessagesScreen 
+            userId={userId} 
+            initialConversationId={convId}
+          />
+        );
       case 'profile':
         return (
           <div className="pb-20">
