@@ -1,8 +1,8 @@
 import React from 'react';
-import { Home, BookOpen, MessageCircle, User } from 'lucide-react';
+import { Home, BookOpen, MessageCircle, User, Compass } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type TabType = 'feed' | 'library' | 'messages' | 'profile';
+export type TabType = 'feed' | 'discover' | 'library' | 'messages' | 'profile';
 
 interface BottomNavProps {
   activeTab: TabType;
@@ -12,6 +12,7 @@ interface BottomNavProps {
 const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) => {
   const tabs = [
     { id: 'feed' as TabType, icon: Home, label: 'Feed' },
+    { id: 'discover' as TabType, icon: Compass, label: 'Discover' },
     { id: 'library' as TabType, icon: BookOpen, label: 'Library' },
     { id: 'messages' as TabType, icon: MessageCircle, label: 'Messages' },
     { id: 'profile' as TabType, icon: User, label: 'Profile' },
@@ -19,7 +20,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) => {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 mobile-safe-area">
-      <div className="max-w-md mx-auto flex items-center justify-around h-16 px-2">
+      <div className="max-w-md mx-auto flex items-center justify-around h-16 px-1">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -36,7 +37,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) => {
             >
               <div
                 className={cn(
-                  "flex items-center justify-center px-4 py-2 rounded-full transition-all duration-200",
+                  "flex items-center justify-center px-3 py-2 rounded-full transition-all duration-200",
                   isActive
                     ? "gradient-primary text-primary-foreground scale-110"
                     : "text-muted-foreground hover:text-foreground"
@@ -46,7 +47,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) => {
               </div>
               <span
                 className={cn(
-                  "text-xs mt-1 transition-all duration-200",
+                  "text-[10px] mt-0.5 transition-all duration-200",
                   isActive ? "text-primary font-semibold" : "text-muted-foreground"
                 )}
               >

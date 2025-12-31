@@ -11,7 +11,7 @@ import TutoLogo from './TutoLogo';
 import { ProfileManagement } from './ProfileManagement';
 import { ApplicationReviewModal } from './admin/ApplicationReviewModal';
 import { ContentModerationPanel } from './admin/ContentModerationPanel';
-import { sendAccountApprovedEmail, sendAccountRejectedEmail, isEmailJSConfigured } from '@/lib/emailService';
+
 
 interface AdminDashboardProps {
   onSignOut: () => void;

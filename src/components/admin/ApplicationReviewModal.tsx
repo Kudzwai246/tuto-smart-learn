@@ -136,31 +136,19 @@ export const ApplicationReviewModal: React.FC<ApplicationReviewModalProps> = ({
 
       if (docsError) throw docsError;
 
-      // Send approval email
-      try {
-        await supabase.functions.invoke('send-notifications', {
-          body: {
-            notificationData: {
-              recipientEmail: teacher.profiles.email,
-              recipientName: teacher.profiles.full_name,
-              notificationType: 'account_approved',
-              title: 'Welcome Aboard! Your Tuto Teacher Account is Approved 🎉',
-              message: 'Congratulations! Your application has been approved and you can now start teaching on Tuto.',
-              additionalData: {
-                fullName: teacher.profiles.full_name,
-                subjects: teacher.subjects,
-                city: teacher.location_city,
-                experience: teacher.experience_years,
-                adminNotes: adminNotes
-              }
-            }
-          }
-        });
-      } catch (emailError) {
-        console.error('Failed to send approval email:', emailError);
-      }
+      // Create in-app notification for the teacher
+      await supabase.from('notifications').insert({
+        user_id: teacher.id,
+        type: 'account_approved',
+        title: 'Welcome to TutoSmart! 🎉',
+        message: 'Congratulations! Your teacher account has been approved. You can now start connecting with students and earning.',
+        metadata: {
+          subjects: teacher.subjects,
+          city: teacher.location_city,
+        }
+      });
 
-      toast.success('Teacher approved successfully! Welcome email sent.');
+      toast.success('Teacher approved successfully!');
       onStatusUpdate();
       onOpenChange(false);
     } catch (error) {
@@ -201,31 +189,28 @@ export const ApplicationReviewModal: React.FC<ApplicationReviewModalProps> = ({
 
       if (docsError) throw docsError;
 
-      // Send rejection email
-      try {
-        await supabase.functions.invoke('send-notifications', {
-          body: {
-            notificationData: {
-              recipientEmail: teacher.profiles.email,
-              recipientName: teacher.profiles.full_name,
-              notificationType: 'account_rejected',
-              title: 'Teacher Application Status Update',
-              message: 'Thank you for your interest in becoming a Tuto teacher.',
-              additionalData: {
-                fullName: teacher.profiles.full_name,
-                subjects: teacher.subjects,
-                city: teacher.location_city,
-                experience: teacher.experience_years,
-                rejectionReason: rejectionReason
-              }
-            }
-          }
-        });
-      } catch (emailError) {
-        console.error('Failed to send rejection email:', emailError);
-      }
+      // Create in-app notification for the teacher
+      const rejectionMessages: Record<string, string> = {
+        incomplete_qualifications: 'Your qualifications need additional documentation.',
+        invalid_documents: 'The uploaded documents were unclear or invalid.',
+        insufficient_experience: 'We require more teaching experience at this time.',
+        location_restrictions: 'We are not currently accepting teachers in your area.',
+        duplicate_application: 'A duplicate application was detected.',
+        other: adminNotes || 'Please contact support for more information.',
+      };
 
-      toast.success('Application rejected. Notification email sent.');
+      await supabase.from('notifications').insert({
+        user_id: teacher.id,
+        type: 'account_rejected',
+        title: 'Application Update',
+        message: `Your teacher application was not approved. ${rejectionMessages[rejectionReason] || 'Please contact support for details.'}`,
+        metadata: {
+          rejectionReason,
+          adminNotes,
+        }
+      });
+
+      toast.success('Application rejected.');
       onStatusUpdate();
       onOpenChange(false);
     } catch (error) {

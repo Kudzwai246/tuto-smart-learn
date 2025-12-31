@@ -10,7 +10,6 @@ import TutoLogo from './TutoLogo';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Progress } from '@/components/ui/progress';
-import { sendApplicationSubmittedEmail, isEmailJSConfigured } from '@/lib/emailService';
 
 interface TeacherApplicationProps {
   onBack: () => void;
@@ -318,26 +317,20 @@ const TeacherApplication: React.FC<TeacherApplicationProps> = ({ onBack, onAppli
         })
         .eq('id', user.id);
 
-      // Send application submitted email via EmailJS
-      if (isEmailJSConfigured()) {
-        try {
-          await sendApplicationSubmittedEmail({
-            recipientName: formData.fullName,
-            recipientEmail: formData.email,
-            applicationId: insertedTeacher?.id || 'N/A',
-            subjects: validSubjects,
-            city: formData.locationCity,
-            documentsCount: uploadedDocs.length,
-          });
-          console.log('Application confirmation email sent via EmailJS');
-        } catch (emailError) {
-          console.error('Failed to send confirmation email:', emailError);
+      // Create in-app notification for the applicant
+      await supabase.from('notifications').insert({
+        user_id: user.id,
+        type: 'application_submitted',
+        title: 'Application Submitted',
+        message: 'Your teacher application has been submitted and will be reviewed within 24 hours. You may log in again after that time to check your status.',
+        metadata: {
+          applicationId: insertedTeacher?.id,
+          subjects: validSubjects,
+          city: formData.locationCity,
         }
-      } else {
-        console.log('EmailJS not configured - skipping email notification');
-      }
+      });
 
-      toast.success('Teacher application submitted successfully! Check your email for confirmation.');
+      toast.success('Application submitted! You will be notified once reviewed.');
       onApplicationSubmitted();
     } catch (error) {
       console.error('Application error:', error);
@@ -730,10 +723,10 @@ const TeacherApplication: React.FC<TeacherApplicationProps> = ({ onBack, onAppli
             <div className="glass bg-primary/5 border-primary/20 rounded-lg p-4">
               <h3 className="font-semibold text-primary mb-2">What happens next?</h3>
               <ul className="text-sm text-foreground space-y-1">
-                <li>• Your application will be reviewed within 48 hours</li>
+                <li>• Your application will be reviewed within 24 hours</li>
                 <li>• We'll verify your qualifications and documents</li>
                 <li>• Once approved, you'll start earning 90% of subscription fees</li>
-                <li>• You'll receive email notifications about your application status</li>
+                <li>• You'll receive in-app notifications about your application status</li>
               </ul>
             </div>
           </div>
