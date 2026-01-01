@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -17,11 +17,12 @@ interface MessagesScreenProps {
 
 const MessagesScreen: React.FC<MessagesScreenProps> = ({ userId, initialConversationId }) => {
   const [conversations, setConversations] = useState<any[]>([]);
-  const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
+  const [selectedConversation, setSelectedConversation] = useState<any | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [showNewConversation, setShowNewConversation] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
+  const initialOpenHandled = useRef(false);
 
   useEffect(() => {
     fetchConversations();
@@ -57,14 +58,40 @@ const MessagesScreen: React.FC<MessagesScreenProps> = ({ userId, initialConversa
     };
   }, [userId]);
 
+  // Handle initial conversation opening - separate from main fetch
   useEffect(() => {
-    if (initialConversationId && conversations.length > 0) {
-      const conv = conversations.find(c => c.id === initialConversationId);
-      if (conv) {
-        setSelectedConversation(initialConversationId);
-      }
+    if (initialConversationId && !initialOpenHandled.current) {
+      initialOpenHandled.current = true;
+      openConversationById(initialConversationId);
     }
-  }, [initialConversationId, conversations]);
+  }, [initialConversationId]);
+
+  const openConversationById = async (conversationId: string) => {
+    try {
+      const { data: convData } = await supabase
+        .from('conversations')
+        .select(`
+          *,
+          participant_one_profile:participant_one (id, full_name, avatar_url, user_type),
+          participant_two_profile:participant_two (id, full_name, avatar_url, user_type)
+        `)
+        .eq('id', conversationId)
+        .single();
+
+      if (convData) {
+        const otherUser = convData.participant_one === userId 
+          ? convData.participant_two_profile 
+          : convData.participant_one_profile;
+        
+        setSelectedConversation({
+          ...convData,
+          otherUser,
+        });
+      }
+    } catch (error) {
+      console.error('Error opening conversation:', error);
+    }
+  };
 
   const fetchConversations = async () => {
     try {
@@ -72,34 +99,18 @@ const MessagesScreen: React.FC<MessagesScreenProps> = ({ userId, initialConversa
         .from('conversations')
         .select(`
           *,
-          participant_one_profile:participant_one (
-            id,
-            full_name,
-            avatar_url,
-            user_type
-          ),
-          participant_two_profile:participant_two (
-            id,
-            full_name,
-            avatar_url,
-            user_type
-          ),
-          messages (
-            content,
-            created_at,
-            sender_id,
-            status
-          )
+          participant_one_profile:participant_one (id, full_name, avatar_url, user_type),
+          participant_two_profile:participant_two (id, full_name, avatar_url, user_type),
+          messages (content, created_at, sender_id, status)
         `)
         .or(`participant_one.eq.${userId},participant_two.eq.${userId}`)
         .order('last_message_at', { ascending: false });
 
       if (convData) {
         const enhanced = convData.map((conv) => {
-          const otherUser =
-            conv.participant_one === userId
-              ? conv.participant_two_profile
-              : conv.participant_one_profile;
+          const otherUser = conv.participant_one === userId
+            ? conv.participant_two_profile
+            : conv.participant_one_profile;
 
           const sortedMessages = [...(conv.messages || [])].sort(
             (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -109,12 +120,7 @@ const MessagesScreen: React.FC<MessagesScreenProps> = ({ userId, initialConversa
             (m: any) => m.sender_id !== userId && m.status !== 'read'
           ).length || 0;
 
-          return {
-            ...conv,
-            otherUser,
-            lastMessage,
-            unreadCount,
-          };
+          return { ...conv, otherUser, lastMessage, unreadCount };
         });
 
         setConversations(enhanced);
@@ -138,9 +144,13 @@ const MessagesScreen: React.FC<MessagesScreenProps> = ({ userId, initialConversa
     return date.toLocaleDateString();
   };
 
-  const handleConversationCreated = (conversationId: string) => {
-    fetchConversations();
-    setSelectedConversation(conversationId);
+  const handleConversationCreated = async (conversationId: string) => {
+    await fetchConversations();
+    openConversationById(conversationId);
+  };
+
+  const handleSelectConversation = (conv: any) => {
+    setSelectedConversation(conv);
   };
 
   const filteredConversations = conversations.filter((conv) =>
@@ -148,16 +158,16 @@ const MessagesScreen: React.FC<MessagesScreenProps> = ({ userId, initialConversa
   );
 
   if (selectedConversation) {
-    const conv = conversations.find((c) => c.id === selectedConversation);
     return (
       <ConversationView
-        conversation={conv}
+        conversation={selectedConversation}
         currentUserId={userId}
         onBack={() => {
           setSelectedConversation(null);
+          initialOpenHandled.current = false;
           fetchConversations();
         }}
-        isOtherUserOnline={conv?.otherUser ? onlineUsers.has(conv.otherUser.id) : false}
+        isOtherUserOnline={selectedConversation.otherUser ? onlineUsers.has(selectedConversation.otherUser.id) : false}
       />
     );
   }
@@ -193,7 +203,6 @@ const MessagesScreen: React.FC<MessagesScreenProps> = ({ userId, initialConversa
       <ScrollArea className="flex-1 pb-16">
         <div className="max-w-md mx-auto">
           {loading ? (
-            // Skeleton loaders
             Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="flex items-center gap-3 p-4 border-b border-border">
                 <div className="w-12 h-12 rounded-full skeleton-shimmer" />
@@ -221,7 +230,7 @@ const MessagesScreen: React.FC<MessagesScreenProps> = ({ userId, initialConversa
               return (
                 <button
                   key={conv.id}
-                  onClick={() => setSelectedConversation(conv.id)}
+                  onClick={() => handleSelectConversation(conv)}
                   className="w-full flex items-center gap-3 p-4 border-b border-border hover:bg-muted/50 transition-colors touch-manipulation"
                 >
                   <div className="relative">
@@ -231,7 +240,6 @@ const MessagesScreen: React.FC<MessagesScreenProps> = ({ userId, initialConversa
                         {conv.otherUser?.full_name?.charAt(0) || 'U'}
                       </AvatarFallback>
                     </Avatar>
-                    {/* Online indicator */}
                     <div className={cn(
                       "absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-card",
                       isOnline ? "bg-success" : "bg-muted-foreground"
