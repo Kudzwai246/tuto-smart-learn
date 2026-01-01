@@ -69,13 +69,15 @@ const DashboardWithNav: React.FC<DashboardWithNavProps> = ({
 
         if (error) throw error;
         conversationId = newConv.id;
-        toast.success('Conversation created!');
       }
 
-      // Navigate to messages with the conversation
+      // Set the conversation ID first, then change tab
       setPendingConversationId(conversationId);
-      setActiveTab('messages');
-      handleBackToMain();
+      // Small delay to ensure state is set before tab change
+      setTimeout(() => {
+        setActiveTab('messages');
+        handleBackToMain();
+      }, 50);
     } catch (error) {
       console.error('Error creating conversation:', error);
       toast.error('Failed to start conversation');

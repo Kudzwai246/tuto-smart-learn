@@ -152,32 +152,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSignOut }) => {
         metadata: { application_status: newStatus },
       });
 
-      // Send email notification via EmailJS
-      if (isEmailJSConfigured()) {
-        try {
-          if (newStatus === 'approved') {
-            await sendAccountApprovedEmail({
-              recipientName: teacherData.profiles.full_name,
-              recipientEmail: teacherData.profiles.email,
-            });
-          } else {
-            await sendAccountRejectedEmail({
-              recipientName: teacherData.profiles.full_name,
-              recipientEmail: teacherData.profiles.email,
-              rejectionReason: 'Please contact support@tuto.co.zw for more information about your application.',
-            });
-          }
-          console.log('Email sent successfully via EmailJS');
-          toast.success('Email notification sent!');
-        } catch (emailError) {
-          console.error('Failed to send notification email:', emailError);
-          toast.error('Status updated but email failed to send');
-        }
-      } else {
-        console.log('EmailJS not configured - skipping email notification');
-      }
-
-      toast.success(`Teacher ${newStatus} successfully${newStatus === 'approved' ? ' - Welcome email sent!' : ''}`);
+      toast.success(`Teacher ${newStatus === 'approved' ? 'approved' : 'rejected'} successfully`);
       fetchDashboardData();
     } catch (error) {
       console.error('Error updating teacher status:', error);

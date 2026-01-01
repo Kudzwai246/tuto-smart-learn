@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, GraduationCap, Users } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -32,10 +33,12 @@ const NewConversationSheet: React.FC<NewConversationSheetProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [activeTab, setActiveTab] = useState('all');
 
   useEffect(() => {
     if (open) {
       fetchUsers();
+      setSearchTerm('');
     }
   }, [open]);
 
@@ -46,6 +49,7 @@ const NewConversationSheet: React.FC<NewConversationSheetProps> = ({
         .from('profiles')
         .select('id, full_name, avatar_url, user_type')
         .neq('id', currentUserId)
+        .neq('user_type', 'admin')
         .order('full_name');
 
       if (error) throw error;
@@ -89,7 +93,7 @@ const NewConversationSheet: React.FC<NewConversationSheetProps> = ({
 
       onConversationCreated(newConv.id);
       onOpenChange(false);
-      toast.success('Conversation created!');
+      toast.success('Conversation started!');
     } catch (error) {
       console.error('Error creating conversation:', error);
       toast.error('Failed to create conversation');
@@ -98,9 +102,17 @@ const NewConversationSheet: React.FC<NewConversationSheetProps> = ({
     }
   };
 
-  const filteredUsers = users.filter(user =>
-    user.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = user.full_name?.toLowerCase().includes(searchTerm.toLowerCase());
+    if (!matchesSearch) return false;
+
+    if (activeTab === 'teachers') return user.user_type === 'teacher';
+    if (activeTab === 'students') return user.user_type === 'student';
+    return true;
+  });
+
+  const teachers = users.filter(u => u.user_type === 'teacher');
+  const students = users.filter(u => u.user_type === 'student');
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -119,7 +131,23 @@ const NewConversationSheet: React.FC<NewConversationSheetProps> = ({
           />
         </div>
 
-        <ScrollArea className="h-[calc(85vh-160px)]">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-4">
+          <TabsList className="w-full">
+            <TabsTrigger value="all" className="flex-1">
+              All ({users.length})
+            </TabsTrigger>
+            <TabsTrigger value="teachers" className="flex-1">
+              <GraduationCap className="w-4 h-4 mr-1" />
+              ({teachers.length})
+            </TabsTrigger>
+            <TabsTrigger value="students" className="flex-1">
+              <Users className="w-4 h-4 mr-1" />
+              ({students.length})
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        <ScrollArea className="h-[calc(85vh-220px)]">
           {loading ? (
             <div className="space-y-3">
               {Array.from({ length: 6 }).map((_, i) => (
@@ -135,6 +163,7 @@ const NewConversationSheet: React.FC<NewConversationSheetProps> = ({
           ) : filteredUsers.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <p>No users found</p>
+              <p className="text-sm mt-1">Try a different search or filter</p>
             </div>
           ) : (
             <div className="space-y-1">
@@ -147,14 +176,18 @@ const NewConversationSheet: React.FC<NewConversationSheetProps> = ({
                 >
                   <Avatar className="w-12 h-12">
                     <AvatarImage src={user.avatar_url || undefined} />
-                    <AvatarFallback className="gradient-primary text-white">
+                    <AvatarFallback className={user.user_type === 'teacher' ? 'gradient-primary text-white' : 'gradient-secondary text-white'}>
                       {user.full_name?.charAt(0) || 'U'}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 text-left">
                     <p className="font-medium">{user.full_name}</p>
-                    <Badge variant="secondary" className="text-xs mt-1">
-                      {user.user_type || 'User'}
+                    <Badge 
+                      variant={user.user_type === 'teacher' ? 'default' : 'secondary'} 
+                      className="text-xs mt-1 capitalize"
+                    >
+                      {user.user_type === 'teacher' && <GraduationCap className="w-3 h-3 mr-1" />}
+                      {user.user_type || 'Student'}
                     </Badge>
                   </div>
                 </button>

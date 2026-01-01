@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Search, MapPin, Star, MessageCircle, Filter, Users, GraduationCap } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Search, MapPin, Star, MessageCircle, Users, GraduationCap, BookOpen } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -21,16 +21,18 @@ interface Teacher {
   full_name: string;
   avatar_url: string | null;
   subjects: string[];
+  curriculum: string | null;
   location_city: string;
   rating: number;
   experience_years: number;
   distance_km?: number;
 }
 
-interface Student {
+interface Connection {
   id: string;
   full_name: string;
   avatar_url: string | null;
+  user_type: string | null;
   education_level: string | null;
   subject_selections: string[] | null;
   location_city: string | null;
@@ -39,16 +41,34 @@ interface Student {
 
 const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ userId, userType, onMessageUser }) => {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
+  const [connections, setConnections] = useState<Connection[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterSubject, setFilterSubject] = useState('all');
-  const [filterDistance, setFilterDistance] = useState('50');
+  const [filterDistance, setFilterDistance] = useState('100');
+  const [filterCurriculum, setFilterCurriculum] = useState('all');
+  const [filterEducation, setFilterEducation] = useState('all');
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [activeTab, setActiveTab] = useState('teachers');
 
   const subjectOptions = [
     'Mathematics', 'Physics', 'Chemistry', 'Biology', 'English', 
-    'History', 'Geography', 'Economics', 'Accounting', 'Computer Science'
+    'History', 'Geography', 'Economics', 'Accounting', 'Computer Science',
+    'Business Studies', 'Literature', 'Shona', 'French'
+  ];
+
+  const curriculumOptions = [
+    { value: 'all', label: 'All Curricula' },
+    { value: 'zimsec', label: 'ZIMSEC' },
+    { value: 'cambridge', label: 'Cambridge' },
+    { value: 'both', label: 'Both' },
+  ];
+
+  const educationOptions = [
+    { value: 'all', label: 'All Levels' },
+    { value: 'o-level', label: 'O-Level' },
+    { value: 'a-level', label: 'A-Level' },
+    { value: 'primary', label: 'Primary' },
   ];
 
   useEffect(() => {
@@ -58,11 +78,9 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ userId, userType, onMes
   useEffect(() => {
     if (userLocation) {
       fetchTeachers();
-      if (userType === 'teacher') {
-        fetchStudents();
-      }
+      fetchConnections();
     }
-  }, [userLocation, filterSubject, filterDistance]);
+  }, [userLocation, filterSubject, filterDistance, filterCurriculum, filterEducation]);
 
   const fetchUserLocation = async () => {
     try {
@@ -75,9 +93,7 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ userId, userType, onMes
         
         if (data?.residence_lat && data?.residence_lng) {
           setUserLocation({ lat: data.residence_lat, lng: data.residence_lng });
-        } else {
-          // Fallback to geolocation
-          getCurrentPosition();
+          return;
         }
       } else {
         const { data } = await supabase
@@ -88,10 +104,10 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ userId, userType, onMes
         
         if (data?.business_lat && data?.business_lng) {
           setUserLocation({ lat: data.business_lat, lng: data.business_lng });
-        } else {
-          getCurrentPosition();
+          return;
         }
       }
+      getCurrentPosition();
     } catch (error) {
       console.error('Error fetching user location:', error);
       getCurrentPosition();
@@ -102,10 +118,7 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ userId, userType, onMes
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => {
-          // Default to Harare if geolocation fails
-          setUserLocation({ lat: -17.8252, lng: 31.0335 });
-        }
+        () => setUserLocation({ lat: -17.8252, lng: 31.0335 })
       );
     } else {
       setUserLocation({ lat: -17.8252, lng: 31.0335 });
@@ -126,16 +139,15 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ userId, userType, onMes
     if (!userLocation) return;
     setLoading(true);
     try {
-      let query = supabase
+      const { data, error } = await supabase
         .from('teachers')
         .select(`
-          id, subjects, location_city, rating, experience_years, business_lat, business_lng,
+          id, subjects, curriculum, location_city, rating, experience_years, business_lat, business_lng,
           profiles!inner(full_name, avatar_url)
         `)
         .eq('approved', true)
         .neq('id', userId);
 
-      const { data, error } = await query;
       if (error) throw error;
 
       let result: Teacher[] = (data || []).map((t: any) => ({
@@ -143,6 +155,7 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ userId, userType, onMes
         full_name: t.profiles.full_name,
         avatar_url: t.profiles.avatar_url,
         subjects: t.subjects || [],
+        curriculum: t.curriculum,
         location_city: t.location_city,
         rating: t.rating || 4.5,
         experience_years: t.experience_years || 0,
@@ -151,20 +164,26 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ userId, userType, onMes
           : undefined,
       }));
 
-      // Filter by distance
+      // Apply filters
       const maxDistance = parseInt(filterDistance);
       result = result.filter(t => !t.distance_km || t.distance_km <= maxDistance);
 
-      // Filter by subject
       if (filterSubject !== 'all') {
         result = result.filter(t => 
           t.subjects.some(s => s.toLowerCase().includes(filterSubject.toLowerCase()))
         );
       }
 
-      // Sort by distance
-      result.sort((a, b) => (a.distance_km || 999) - (b.distance_km || 999));
+      if (filterCurriculum !== 'all') {
+        result = result.filter(t => {
+          if (!t.curriculum) return true;
+          const curr = t.curriculum.toLowerCase();
+          if (filterCurriculum === 'both') return curr.includes('both') || curr.includes('zimsec') && curr.includes('cambridge');
+          return curr.includes(filterCurriculum);
+        });
+      }
 
+      result.sort((a, b) => (a.distance_km || 999) - (b.distance_km || 999));
       setTeachers(result);
     } catch (error) {
       console.error('Error fetching teachers:', error);
@@ -174,51 +193,79 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ userId, userType, onMes
     }
   };
 
-  const fetchStudents = async () => {
+  const fetchConnections = async () => {
     if (!userLocation) return;
     try {
-      const { data, error } = await supabase
+      // Fetch all users except current user (students and other teachers)
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url, user_type')
+        .neq('id', userId)
+        .neq('user_type', 'admin');
+
+      if (profilesError) throw profilesError;
+
+      // Fetch student details
+      const { data: studentsData } = await supabase
         .from('students')
-        .select(`
-          id, education_level, subject_selections, location_city, residence_lat, residence_lng,
-          profiles!inner(full_name, avatar_url)
-        `)
-        .neq('id', userId);
+        .select('id, education_level, subject_selections, location_city, residence_lat, residence_lng');
 
-      if (error) throw error;
+      const studentMap = new Map((studentsData || []).map(s => [s.id, s]));
 
-      let result: Student[] = (data || []).map((s: any) => ({
-        id: s.id,
-        full_name: s.profiles.full_name,
-        avatar_url: s.profiles.avatar_url,
-        education_level: s.education_level,
-        subject_selections: s.subject_selections,
-        location_city: s.location_city,
-        distance_km: s.residence_lat && s.residence_lng
-          ? haversine(userLocation.lat, userLocation.lng, s.residence_lat, s.residence_lng)
-          : undefined,
-      }));
+      let result: Connection[] = (profilesData || []).map((p: any) => {
+        const studentInfo = studentMap.get(p.id);
+        let distance_km: number | undefined;
+        
+        if (studentInfo?.residence_lat && studentInfo?.residence_lng) {
+          distance_km = haversine(userLocation.lat, userLocation.lng, studentInfo.residence_lat, studentInfo.residence_lng);
+        }
 
-      // Filter by distance
+        return {
+          id: p.id,
+          full_name: p.full_name,
+          avatar_url: p.avatar_url,
+          user_type: p.user_type,
+          education_level: studentInfo?.education_level || null,
+          subject_selections: studentInfo?.subject_selections || null,
+          location_city: studentInfo?.location_city || null,
+          distance_km,
+        };
+      });
+
+      // Filter out teachers (they show in teachers tab)
+      result = result.filter(c => c.user_type !== 'teacher');
+
+      // Apply distance filter
       const maxDistance = parseInt(filterDistance);
-      result = result.filter(s => !s.distance_km || s.distance_km <= maxDistance);
+      result = result.filter(c => !c.distance_km || c.distance_km <= maxDistance);
 
-      // Sort by distance
+      // Apply education level filter
+      if (filterEducation !== 'all') {
+        result = result.filter(c => {
+          if (!c.education_level) return true;
+          const level = c.education_level.toLowerCase();
+          return level.includes(filterEducation);
+        });
+      }
+
       result.sort((a, b) => (a.distance_km || 999) - (b.distance_km || 999));
-
-      setStudents(result);
+      setConnections(result);
     } catch (error) {
-      console.error('Error fetching students:', error);
+      console.error('Error fetching connections:', error);
     }
   };
+
+  const handleMessage = useCallback((targetId: string) => {
+    onMessageUser(targetId);
+  }, [onMessageUser]);
 
   const filteredTeachers = teachers.filter(t =>
     t.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     t.subjects.some(s => s.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const filteredStudents = students.filter(s =>
-    s.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredConnections = connections.filter(c =>
+    c.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const renderTeacherCard = (teacher: Teacher) => (
@@ -234,17 +281,22 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ userId, userType, onMes
           <h3 className="font-semibold truncate">{teacher.full_name}</h3>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <MapPin className="w-3 h-3" />
-            <span>{teacher.location_city}</span>
+            <span className="truncate">{teacher.location_city || 'Location not set'}</span>
             {teacher.distance_km !== undefined && (
-              <span className="text-primary">• {teacher.distance_km.toFixed(1)} km</span>
+              <span className="text-primary shrink-0">• {teacher.distance_km.toFixed(1)} km</span>
             )}
           </div>
-          <div className="flex items-center gap-1 mt-1">
-            <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-            <span className="text-sm font-medium">{teacher.rating?.toFixed(1)}</span>
-            <span className="text-xs text-muted-foreground">
-              • {teacher.experience_years} yrs exp
-            </span>
+          <div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center gap-1">
+              <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+              <span className="text-sm font-medium">{teacher.rating?.toFixed(1)}</span>
+            </div>
+            <span className="text-xs text-muted-foreground">• {teacher.experience_years} yrs</span>
+            {teacher.curriculum && (
+              <Badge variant="outline" className="text-xs">
+                {teacher.curriculum}
+              </Badge>
+            )}
           </div>
         </div>
       </div>
@@ -265,7 +317,7 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ userId, userType, onMes
       <Button 
         className="w-full gradient-primary" 
         size="sm"
-        onClick={() => onMessageUser(teacher.id)}
+        onClick={() => handleMessage(teacher.id)}
       >
         <MessageCircle className="w-4 h-4 mr-2" />
         Send Message
@@ -273,42 +325,47 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ userId, userType, onMes
     </div>
   );
 
-  const renderStudentCard = (student: Student) => (
-    <div key={student.id} className="glass border-border/50 rounded-xl p-4 space-y-3">
+  const renderConnectionCard = (connection: Connection) => (
+    <div key={connection.id} className="glass border-border/50 rounded-xl p-4 space-y-3">
       <div className="flex items-start gap-3">
         <Avatar className="w-14 h-14">
-          <AvatarImage src={student.avatar_url || undefined} />
+          <AvatarImage src={connection.avatar_url || undefined} />
           <AvatarFallback className="gradient-secondary text-white text-lg">
-            {student.full_name?.charAt(0) || 'S'}
+            {connection.full_name?.charAt(0) || 'U'}
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold truncate">{student.full_name}</h3>
+          <h3 className="font-semibold truncate">{connection.full_name}</h3>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <MapPin className="w-3 h-3" />
-            <span>{student.location_city || 'Location not set'}</span>
-            {student.distance_km !== undefined && (
-              <span className="text-primary">• {student.distance_km.toFixed(1)} km</span>
+            <span className="truncate">{connection.location_city || 'Location not set'}</span>
+            {connection.distance_km !== undefined && (
+              <span className="text-primary shrink-0">• {connection.distance_km.toFixed(1)} km</span>
             )}
           </div>
-          {student.education_level && (
-            <p className="text-xs text-muted-foreground mt-1">
-              {student.education_level}
-            </p>
-          )}
+          <div className="flex items-center gap-2 mt-1">
+            <Badge variant="outline" className="text-xs capitalize">
+              {connection.user_type || 'Student'}
+            </Badge>
+            {connection.education_level && (
+              <Badge variant="secondary" className="text-xs">
+                {connection.education_level}
+              </Badge>
+            )}
+          </div>
         </div>
       </div>
 
-      {student.subject_selections && student.subject_selections.length > 0 && (
+      {connection.subject_selections && connection.subject_selections.length > 0 && (
         <div className="flex flex-wrap gap-1">
-          {student.subject_selections.slice(0, 3).map((subject, i) => (
+          {connection.subject_selections.slice(0, 3).map((subject, i) => (
             <Badge key={i} variant="outline" className="text-xs">
               {subject}
             </Badge>
           ))}
-          {student.subject_selections.length > 3 && (
+          {connection.subject_selections.length > 3 && (
             <Badge variant="outline" className="text-xs">
-              +{student.subject_selections.length - 3}
+              +{connection.subject_selections.length - 3}
             </Badge>
           )}
         </div>
@@ -318,7 +375,7 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ userId, userType, onMes
         className="w-full" 
         variant="secondary"
         size="sm"
-        onClick={() => onMessageUser(student.id)}
+        onClick={() => handleMessage(connection.id)}
       >
         <MessageCircle className="w-4 h-4 mr-2" />
         Send Message
@@ -343,20 +400,47 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ userId, userType, onMes
             />
           </div>
 
-          <div className="flex gap-2">
-            <Select value={filterSubject} onValueChange={setFilterSubject}>
-              <SelectTrigger className="flex-1">
-                <SelectValue placeholder="Subject" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Subjects</SelectItem>
-                {subjectOptions.map(s => (
-                  <SelectItem key={s} value={s.toLowerCase()}>{s}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {/* Filters */}
+          <div className="grid grid-cols-2 gap-2">
+            {activeTab === 'teachers' && (
+              <>
+                <Select value={filterCurriculum} onValueChange={setFilterCurriculum}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Curriculum" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {curriculumOptions.map(opt => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={filterSubject} onValueChange={setFilterSubject}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Subject" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Subjects</SelectItem>
+                    {subjectOptions.map(s => (
+                      <SelectItem key={s} value={s.toLowerCase()}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </>
+            )}
+            {activeTab === 'connections' && (
+              <Select value={filterEducation} onValueChange={setFilterEducation}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Education Level" />
+                </SelectTrigger>
+                <SelectContent>
+                  {educationOptions.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <Select value={filterDistance} onValueChange={setFilterDistance}>
-              <SelectTrigger className="w-28">
+              <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -365,6 +449,7 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ userId, userType, onMes
                 <SelectItem value="25">25 km</SelectItem>
                 <SelectItem value="50">50 km</SelectItem>
                 <SelectItem value="100">100 km</SelectItem>
+                <SelectItem value="9999">Any distance</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -372,80 +457,81 @@ const DiscoverScreen: React.FC<DiscoverScreenProps> = ({ userId, userType, onMes
       </header>
 
       {/* Content */}
-      <div className="flex-1 overflow-hidden">
-        {userType === 'teacher' ? (
-          <Tabs defaultValue="students" className="h-full flex flex-col">
-            <div className="px-4 pt-2">
-              <TabsList className="w-full max-w-lg mx-auto">
-                <TabsTrigger value="students" className="flex-1">
-                  <Users className="w-4 h-4 mr-2" />
-                  Students
-                </TabsTrigger>
-                <TabsTrigger value="teachers" className="flex-1">
-                  <GraduationCap className="w-4 h-4 mr-2" />
-                  Teachers
-                </TabsTrigger>
-              </TabsList>
-            </div>
-            
-            <TabsContent value="students" className="flex-1 m-0">
-              <ScrollArea className="h-full pb-20">
-                <div className="max-w-lg mx-auto p-4 space-y-3">
-                  {loading ? (
-                    Array.from({ length: 4 }).map((_, i) => (
-                      <div key={i} className="h-40 skeleton-shimmer rounded-xl" />
-                    ))
-                  ) : filteredStudents.length === 0 ? (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                      <p>No students found nearby</p>
-                    </div>
-                  ) : (
-                    filteredStudents.map(renderStudentCard)
-                  )}
-                </div>
-              </ScrollArea>
-            </TabsContent>
-
-            <TabsContent value="teachers" className="flex-1 m-0">
-              <ScrollArea className="h-full pb-20">
-                <div className="max-w-lg mx-auto p-4 space-y-3">
-                  {loading ? (
-                    Array.from({ length: 4 }).map((_, i) => (
-                      <div key={i} className="h-40 skeleton-shimmer rounded-xl" />
-                    ))
-                  ) : filteredTeachers.length === 0 ? (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <GraduationCap className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                      <p>No teachers found</p>
-                    </div>
-                  ) : (
-                    filteredTeachers.map(renderTeacherCard)
-                  )}
-                </div>
-              </ScrollArea>
-            </TabsContent>
-          </Tabs>
-        ) : (
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+        <div className="px-4 pt-2">
+          <TabsList className="w-full max-w-lg mx-auto">
+            <TabsTrigger value="teachers" className="flex-1">
+              <GraduationCap className="w-4 h-4 mr-2" />
+              Teachers
+            </TabsTrigger>
+            <TabsTrigger value="connections" className="flex-1">
+              <Users className="w-4 h-4 mr-2" />
+              Connections
+            </TabsTrigger>
+          </TabsList>
+        </div>
+        
+        <TabsContent value="teachers" className="flex-1 m-0 overflow-hidden">
           <ScrollArea className="h-full pb-20">
             <div className="max-w-lg mx-auto p-4 space-y-3">
               {loading ? (
                 Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="h-40 skeleton-shimmer rounded-xl" />
+                  <div key={i} className="h-44 skeleton-shimmer rounded-xl" />
                 ))
               ) : filteredTeachers.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
                   <GraduationCap className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>No teachers found</p>
+                  <p className="font-medium">No teachers found</p>
                   <p className="text-sm mt-1">Try adjusting your filters</p>
+                  <Button 
+                    variant="outline" 
+                    className="mt-4"
+                    onClick={() => {
+                      setFilterSubject('all');
+                      setFilterCurriculum('all');
+                      setFilterDistance('100');
+                    }}
+                  >
+                    Clear Filters
+                  </Button>
                 </div>
               ) : (
                 filteredTeachers.map(renderTeacherCard)
               )}
             </div>
           </ScrollArea>
-        )}
-      </div>
+        </TabsContent>
+
+        <TabsContent value="connections" className="flex-1 m-0 overflow-hidden">
+          <ScrollArea className="h-full pb-20">
+            <div className="max-w-lg mx-auto p-4 space-y-3">
+              {loading ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-40 skeleton-shimmer rounded-xl" />
+                ))
+              ) : filteredConnections.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p className="font-medium">No connections found nearby</p>
+                  <p className="text-sm mt-1">Expand your search distance</p>
+                  <Button 
+                    variant="outline" 
+                    className="mt-4"
+                    onClick={() => {
+                      setFilterEducation('all');
+                      setFilterDistance('100');
+                    }}
+                  >
+                    Clear Filters
+                  </Button>
+                </div>
+              ) : (
+                filteredConnections.map(renderConnectionCard)
+              )}
+            </div>
+          </ScrollArea>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
