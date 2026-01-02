@@ -27,58 +27,81 @@ const ConversationView: React.FC<ConversationViewProps> = ({
   const [sending, setSending] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const typingChannelRef = useRef<any>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (conversation) {
-      fetchMessages();
-      markMessagesAsRead();
+    if (!conversation?.id) return;
 
-      // Subscribe to new messages
-      const messageSubscription = supabase
-        .channel(`conversation_${conversation.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'messages',
-            filter: `conversation_id=eq.${conversation.id}`,
-          },
-          (payload) => {
-            setMessages((prev) => [...prev, payload.new]);
-            scrollToBottom();
-            // Mark as read if from other user
-            if (payload.new.sender_id !== currentUserId) {
-              markMessagesAsRead();
-            }
+    fetchMessages();
+    markMessagesAsRead();
+
+    // Autofocus the composer (also triggers keyboard on mobile)
+    const focusTimer = window.setTimeout(() => {
+      inputRef.current?.focus();
+    }, 150);
+
+    const messageSubscription = supabase
+      .channel(`conversation_${conversation.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${conversation.id}`,
+        },
+        (payload) => {
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === payload.new.id)) return prev;
+            return [...prev, payload.new];
+          });
+          scrollToBottom();
+
+          // Mark as read if from other user
+          if (payload.new.sender_id !== currentUserId) {
+            markMessagesAsRead();
           }
-        )
-        .subscribe();
-
-      // Subscribe to typing indicator
-      const typingChannel = supabase.channel(`typing_${conversation.id}`);
-      typingChannel
-        .on('broadcast', { event: 'typing' }, ({ payload }) => {
-          if (payload.user_id !== currentUserId) {
-            setIsTyping(true);
-            if (typingTimeoutRef.current) {
-              clearTimeout(typingTimeoutRef.current);
-            }
-            typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 2000);
-          }
-        })
-        .subscribe();
-
-      return () => {
-        messageSubscription.unsubscribe();
-        typingChannel.unsubscribe();
-        if (typingTimeoutRef.current) {
-          clearTimeout(typingTimeoutRef.current);
         }
-      };
-    }
-  }, [conversation]);
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${conversation.id}`,
+        },
+        (payload) => {
+          setMessages((prev) =>
+            prev.map((m) => (m.id === payload.new.id ? { ...m, ...payload.new } : m))
+          );
+        }
+      )
+      .subscribe();
+
+    // Subscribe to typing indicator
+    const typingChannel = supabase.channel(`typing_${conversation.id}`);
+    typingChannelRef.current = typingChannel;
+    typingChannel
+      .on('broadcast', { event: 'typing' }, ({ payload }) => {
+        if (payload.user_id !== currentUserId) {
+          setIsTyping(true);
+          if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+          typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 2000);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      window.clearTimeout(focusTimer);
+      messageSubscription.unsubscribe();
+      typingChannel.unsubscribe();
+      typingChannelRef.current = null;
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    };
+  }, [conversation?.id, currentUserId]);
 
   const fetchMessages = async () => {
     try {
@@ -104,7 +127,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
         .update({ status: 'read' })
         .eq('conversation_id', conversation.id)
         .neq('sender_id', currentUserId)
-        .in('status', ['sent', 'delivered']);
+        .neq('status', 'read');
     } catch (error) {
       console.error('Error marking messages as read:', error);
     }
@@ -118,13 +141,15 @@ const ConversationView: React.FC<ConversationViewProps> = ({
 
   const broadcastTyping = async () => {
     try {
-      const channel = supabase.channel(`typing_${conversation.id}`);
+      const channel = typingChannelRef.current;
+      if (!channel) return;
+
       await channel.send({
         type: 'broadcast',
         event: 'typing',
         payload: { user_id: currentUserId },
       });
-    } catch (error) {
+    } catch {
       // Silently fail typing indicator
     }
   };
@@ -185,7 +210,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -233,7 +258,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
       </header>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 px-4 py-4 pb-24">
+      <ScrollArea className="flex-1 px-4 py-4 pb-40">
         <div className="max-w-md mx-auto space-y-4">
           {messages.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
@@ -251,9 +276,18 @@ const ConversationView: React.FC<ConversationViewProps> = ({
           {isTyping && (
             <div className="flex items-center gap-2 text-muted-foreground text-sm">
               <div className="flex gap-1">
-                <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                <span
+                  className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"
+                  style={{ animationDelay: '0ms' }}
+                />
+                <span
+                  className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"
+                  style={{ animationDelay: '150ms' }}
+                />
+                <span
+                  className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"
+                  style={{ animationDelay: '300ms' }}
+                />
               </div>
             </div>
           )}
@@ -261,29 +295,33 @@ const ConversationView: React.FC<ConversationViewProps> = ({
         </div>
       </ScrollArea>
 
-      {/* Composer */}
-      <div className="sticky bottom-0 bg-card border-t border-border p-4 mobile-safe-area">
+      {/* Composer (fixed so it's never hidden by BottomNav) */}
+      <div className="fixed bottom-0 left-0 right-0 z-[60] bg-card border-t border-border p-4 mobile-safe-area">
         <div className="max-w-md mx-auto flex items-end gap-2">
-          <Button variant="ghost" size="icon" className="shrink-0">
+          <Button variant="ghost" size="icon" className="shrink-0" aria-label="Attach">
             <Paperclip className="w-5 h-5" />
           </Button>
-          <Button variant="ghost" size="icon" className="shrink-0">
+          <Button variant="ghost" size="icon" className="shrink-0" aria-label="Camera">
             <Camera className="w-5 h-5" />
           </Button>
 
           <div className="flex-1 relative">
             <Textarea
+              ref={inputRef}
               placeholder="Type a message..."
               value={newMessage}
               onChange={handleInputChange}
-              onKeyPress={handleKeyPress}
+              onKeyDown={handleKeyDown}
+              onFocus={scrollToBottom}
               className="min-h-[44px] max-h-[120px] resize-none pr-10"
               rows={1}
+              aria-label="Message"
             />
             <Button
               variant="ghost"
               size="icon"
               className="absolute right-1 bottom-1 h-8 w-8"
+              aria-label="Emoji"
             >
               <Smile className="w-4 h-4" />
             </Button>
@@ -295,11 +333,12 @@ const ConversationView: React.FC<ConversationViewProps> = ({
               disabled={sending}
               className="shrink-0 gradient-primary"
               size="icon"
+              aria-label="Send"
             >
               <Send className="w-5 h-5" />
             </Button>
           ) : (
-            <Button variant="ghost" size="icon" className="shrink-0">
+            <Button variant="ghost" size="icon" className="shrink-0" aria-label="Voice note">
               <Mic className="w-5 h-5" />
             </Button>
           )}
